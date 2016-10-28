@@ -8,14 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use boxed::Box;
-use convert::Into;
+
 use error;
 use fmt;
-use marker::{Send, Sync};
-use option::Option::{self, Some, None};
 use result;
-use sys;
 
 /// A specialized [`Result`](../result/enum.Result.html) type for I/O
 /// operations.
@@ -177,15 +173,6 @@ impl Error {
         }
     }
 
-    /// Returns an error representing the last OS error which occurred.
-    ///
-    /// This function reads the value of `errno` for the target platform (e.g.
-    /// `GetLastError` on Windows) and will return a corresponding instance of
-    /// `Error` for the error code.
-    pub fn last_os_error() -> Error {
-        Error::from_raw_os_error(sys::os::errno() as i32)
-    }
-
     /// Creates a new instance of an `Error` from a particular OS error code.
     pub fn from_raw_os_error(code: i32) -> Error {
         Error { repr: Repr::Os(code) }
@@ -240,7 +227,7 @@ impl Error {
     /// Returns the corresponding `ErrorKind` for this error.
     pub fn kind(&self) -> ErrorKind {
         match self.repr {
-            Repr::Os(code) => sys::decode_error_kind(code),
+            Repr::Os(_code) => ErrorKind::Other,
             Repr::Custom(ref c) => c.kind,
         }
     }
@@ -250,8 +237,7 @@ impl fmt::Debug for Repr {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             Repr::Os(ref code) =>
-                fmt.debug_struct("Os").field("code", code)
-                   .field("message", &sys::os::error_string(*code)).finish(),
+                fmt.debug_struct("Os").field("code", code).finish(),
             Repr::Custom(ref c) => fmt.debug_tuple("Custom").field(c).finish(),
         }
     }
@@ -261,8 +247,7 @@ impl fmt::Display for Error {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         match self.repr {
             Repr::Os(code) => {
-                let detail = sys::os::error_string(code);
-                write!(fmt, "{} (os error {})", detail, code)
+                write!(fmt, "os error {}", code)
             }
             Repr::Custom(ref c) => c.error.fmt(fmt),
         }

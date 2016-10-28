@@ -1,12 +1,17 @@
 [package]
-name = "ctr-std"
-version = "0.1.0"
-authors = ["Fenrir <fenrirwolf@gmail.com>"]
-license = "MIT/Apache 2.0"
+name = "std"
+version = "0.0.0"
+authors = ["Ronald Kinard <furyhunter600@gmail.com>"]
+license = "https://en.wikipedia.org/wiki/Zlib_License"
 
 [lib]
-name = "std"
+crate-type = ["rlib"]
 
-[dependencies]
-alloc_system3ds = { git = "https://github.com/rust3ds/alloc_system3ds" }
-ctr-libc = { git = "https://github.com/rust3ds/ctr-libc" }
+[dependencies.alloc_system3ds]
+git = "https://github.com/rust3ds/alloc_system3ds"
+
+[dependencies.ctru-sys]
+git = "https://github.com/FenrirWolf/ctru-sys"
+
+[dependencies.spin]
+version = "0.4"

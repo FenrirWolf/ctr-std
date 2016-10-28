@@ -9,25 +9,18 @@
 // except according to those terms.
 
 use ascii;
-use borrow::{Cow, ToOwned, Borrow};
-use boxed::Box;
-use convert::{Into, From};
-use cmp::{PartialEq, Eq, PartialOrd, Ord, Ordering};
+use borrow::{Cow, Borrow};
+use cmp::Ordering;
 use error::Error;
 use fmt::{self, Write};
 use io;
-use iter::Iterator;
-use libc;
-use libc::c_char;
+use libctru::libc::{self, c_char};
 use mem;
 use memchr;
 use ops;
-use option::Option::{self, Some, None};
-use result::Result::{self, Ok, Err};
+use ptr;
 use slice;
 use str::{self, Utf8Error};
-use string::String;
-use vec::Vec;
 
 /// A type representing an owned C-compatible string
 ///
@@ -74,6 +67,9 @@ use vec::Vec;
 
 #[derive(PartialEq, PartialOrd, Eq, Ord, Hash, Clone)]
 pub struct CString {
+    // Invariant 1: the slice ends with a zero byte and has a length of at least one.
+    // Invariant 2: the slice contains only one zero byte.
+    // Improper usage of unsafe function can break Invariant 2, but not Invariant 1.
     inner: Box<[u8]>,
 }
 
@@ -98,11 +94,9 @@ pub struct CString {
 ///
 /// extern { fn my_string() -> *const c_char; }
 ///
-/// fn main() {
-///     unsafe {
-///         let slice = CStr::from_ptr(my_string());
-///         println!("string length: {}", slice.to_bytes().len());
-///     }
+/// unsafe {
+///     let slice = CStr::from_ptr(my_string());
+///     println!("string length: {}", slice.to_bytes().len());
 /// }
 /// ```
 ///
@@ -118,10 +112,8 @@ pub struct CString {
 ///     unsafe { work_with(data.as_ptr()) }
 /// }
 ///
-/// fn main() {
-///     let s = CString::new("data data data data").unwrap();
-///     work(&s);
-/// }
+/// let s = CString::new("data data data data").unwrap();
+/// work(&s);
 /// ```
 ///
 /// Converting a foreign C string into a Rust `String`
@@ -138,9 +130,7 @@ pub struct CString {
 ///     }
 /// }
 ///
-/// fn main() {
-///     println!("string: {}", my_string_safe());
-/// }
+/// println!("string: {}", my_string_safe());
 /// ```
 #[derive(Hash)]
 pub struct CStr {
@@ -153,17 +143,17 @@ pub struct CStr {
 
 /// An error returned from `CString::new` to indicate that a nul byte was found
 /// in the vector provided.
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub struct NulError(usize, Vec<u8>);
 
 /// An error returned from `CStr::from_bytes_with_nul` to indicate that a nul
 /// byte was found too early in the slice provided or one wasn't found at all.
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub struct FromBytesWithNulError { _a: () }
 
 /// An error returned from `CString::into_string` to indicate that a UTF-8 error
 /// was encountered during the conversion.
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub struct IntoStringError {
     inner: CString,
     error: Utf8Error,
@@ -183,11 +173,9 @@ impl CString {
     ///
     /// extern { fn puts(s: *const c_char); }
     ///
-    /// fn main() {
-    ///     let to_print = CString::new("Hello!").unwrap();
-    ///     unsafe {
-    ///         puts(to_print.as_ptr());
-    ///     }
+    /// let to_print = CString::new("Hello!").unwrap();
+    /// unsafe {
+    ///     puts(to_print.as_ptr());
     /// }
     /// ```
     ///
@@ -213,16 +201,33 @@ impl CString {
     /// This method is equivalent to `new` except that no runtime assertion
     /// is made that `v` contains no 0 bytes, and it requires an actual
     /// byte vector, not anything that can be converted to one with Into.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::ffi::CString;
+    ///
+    /// let raw = b"foo".to_vec();
+    /// unsafe {
+    ///     let c_string = CString::from_vec_unchecked(raw);
+    /// }
+    /// ```
     pub unsafe fn from_vec_unchecked(mut v: Vec<u8>) -> CString {
+        v.reserve_exact(1);
         v.push(0);
         CString { inner: v.into_boxed_slice() }
     }
 
     /// Retakes ownership of a `CString` that was transferred to C.
     ///
+    /// Additionally, the length of the string will be recalculated from the pointer.
+    ///
+    /// # Safety
+    ///
     /// This should only ever be called with a pointer that was earlier
-    /// obtained by calling `into_raw` on a `CString`. Additionally, the length
-    /// of the string will be recalculated from the pointer.
+    /// obtained by calling `into_raw` on a `CString`. Other usage (e.g. trying to take
+    /// ownership of a string that was allocated by foreign code) is likely to lead
+    /// to undefined behavior or allocator corruption.
     pub unsafe fn from_raw(ptr: *mut c_char) -> CString {
         let len = libc::strlen(ptr) + 1; // Including the NUL byte
         let slice = slice::from_raw_parts(ptr, len as usize);
@@ -238,7 +243,7 @@ impl CString {
     ///
     /// Failure to call `from_raw` will lead to a memory leak.
     pub fn into_raw(self) -> *mut c_char {
-        Box::into_raw(self.inner) as *mut c_char
+        Box::into_raw(self.into_inner()) as *mut c_char
     }
 
     /// Converts the `CString` into a `String` if it contains valid Unicode data.
@@ -257,7 +262,7 @@ impl CString {
     /// The returned buffer does **not** contain the trailing nul separator and
     /// it is guaranteed to not have any interior nul bytes.
     pub fn into_bytes(self) -> Vec<u8> {
-        let mut vec = self.inner.into_vec();
+        let mut vec = self.into_inner().into_vec();
         let _nul = vec.pop();
         debug_assert_eq!(_nul, Some(0u8));
         vec
@@ -266,7 +271,7 @@ impl CString {
     /// Equivalent to the `into_bytes` function except that the returned vector
     /// includes the trailing nul byte.
     pub fn into_bytes_with_nul(self) -> Vec<u8> {
-        self.inner.into_vec()
+        self.into_inner().into_vec()
     }
 
     /// Returns the contents of this `CString` as a slice of bytes.
@@ -281,6 +286,25 @@ impl CString {
     /// includes the trailing nul byte.
     pub fn as_bytes_with_nul(&self) -> &[u8] {
         &self.inner
+    }
+
+    // Bypass "move out of struct which implements `Drop` trait" restriction.
+    fn into_inner(self) -> Box<[u8]> {
+        unsafe {
+            let result = ptr::read(&self.inner);
+            mem::forget(self);
+            result
+        }
+    }
+}
+
+// Turns this `CString` into an empty string to prevent
+// memory unsafe code from working by accident. Inline
+// to prevent LLVM from optimizing it away in debug builds.
+impl Drop for CString {
+    #[inline]
+    fn drop(&mut self) {
+        unsafe { *self.inner.get_unchecked_mut(0) = 0; }
     }
 }
 
@@ -322,6 +346,7 @@ impl<'a> Default for &'a CStr {
 }
 
 impl Default for CString {
+    /// Creates an empty `CString`.
     fn default() -> CString {
         let a: &CStr = Default::default();
         a.to_owned()
@@ -335,10 +360,31 @@ impl Borrow<CStr> for CString {
 impl NulError {
     /// Returns the position of the nul byte in the slice that was provided to
     /// `CString::new`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::ffi::CString;
+    ///
+    /// let nul_error = CString::new("foo\0bar").unwrap_err();
+    /// assert_eq!(nul_error.nul_position(), 3);
+    ///
+    /// let nul_error = CString::new("foo bar\0").unwrap_err();
+    /// assert_eq!(nul_error.nul_position(), 7);
+    /// ```
     pub fn nul_position(&self) -> usize { self.0 }
 
     /// Consumes this error, returning the underlying vector of bytes which
     /// generated the error in the first place.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::ffi::CString;
+    ///
+    /// let nul_error = CString::new("foo\0bar").unwrap_err();
+    /// assert_eq!(nul_error.into_vec(), b"foo\0bar");
+    /// ```
     pub fn into_vec(self) -> Vec<u8> { self.1 }
 }
 
@@ -476,6 +522,38 @@ impl CStr {
     /// The returned pointer will be valid for as long as `self` is and points
     /// to a contiguous region of memory terminated with a 0 byte to represent
     /// the end of the string.
+    ///
+    /// **WARNING**
+    ///
+    /// It is your responsibility to make sure that the underlying memory is not
+    /// freed too early. For example, the following code will cause undefined
+    /// behaviour when `ptr` is used inside the `unsafe` block:
+    ///
+    /// ```no_run
+    /// use std::ffi::{CString};
+    ///
+    /// let ptr = CString::new("Hello").unwrap().as_ptr();
+    /// unsafe {
+    ///     // `ptr` is dangling
+    ///     *ptr;
+    /// }
+    /// ```
+    ///
+    /// This happens because the pointer returned by `as_ptr` does not carry any
+    /// lifetime information and the string is deallocated immediately after
+    /// the `CString::new("Hello").unwrap().as_ptr()` expression is evaluated.
+    /// To fix the problem, bind the string to a local variable:
+    ///
+    /// ```no_run
+    /// use std::ffi::{CString};
+    ///
+    /// let hello = CString::new("Hello").unwrap();
+    /// let ptr = hello.as_ptr();
+    /// unsafe {
+    ///     // `ptr` is valid because `hello` is in scope
+    ///     *ptr;
+    /// }
+    /// ```
     pub fn as_ptr(&self) -> *const c_char {
         self.inner.as_ptr()
     }
@@ -596,11 +674,11 @@ impl AsRef<CStr> for CString {
 
 #[cfg(test)]
 mod tests {
-    use prelude::v1::*;
     use super::*;
-    use os::raw::c_char;
-    use borrow::Cow::{Borrowed, Owned};
-    use hash::{SipHasher, Hash, Hasher};
+    use libc::c_char;
+    use collections::borrow::Cow::{Borrowed, Owned};
+    use collections::borrow::ToOwned;
+    use core::hash::{Hash, Hasher};
 
     #[test]
     fn c_to_rust() {
@@ -674,22 +752,6 @@ mod tests {
 
         let owned = unsafe { CStr::from_ptr(ptr).to_owned() };
         assert_eq!(owned.as_bytes_with_nul(), data);
-    }
-
-    #[test]
-    fn equal_hash() {
-        let data = b"123\xE2\xFA\xA6\0";
-        let ptr = data.as_ptr() as *const c_char;
-        let cstr: &'static CStr = unsafe { CStr::from_ptr(ptr) };
-
-        let mut s = SipHasher::new_with_keys(0, 0);
-        cstr.hash(&mut s);
-        let cstr_hash = s.finish();
-        let mut s = SipHasher::new_with_keys(0, 0);
-        CString::new(&data[..data.len() - 1]).unwrap().hash(&mut s);
-        let cstring_hash = s.finish();
-
-        assert_eq!(cstr_hash, cstring_hash);
     }
 
     #[test]

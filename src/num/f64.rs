@@ -2,9 +2,8 @@
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
+// Licensed under the Apache License, Version 2.0  or the MIT license
+// , at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
@@ -17,11 +16,11 @@
 #[cfg(not(test))]
 use core::num;
 #[cfg(not(test))]
-use intrinsics;
+use core::intrinsics;
 #[cfg(not(test))]
-use libc::c_int;
+use libctru::libc::c_int;
 #[cfg(not(test))]
-use num::FpCategory;
+use core::num::FpCategory;
 
 pub use core::f64::{RADIX, MANTISSA_DIGITS, DIGITS, EPSILON};
 pub use core::f64::{MIN_EXP, MAX_EXP, MIN_10_EXP};
@@ -31,10 +30,10 @@ pub use core::f64::consts;
 
 #[allow(dead_code)]
 mod cmath {
-    use libc::{c_double, c_int};
+    use libctru::libc::{c_double, c_int};
 
     #[link_name = "m"]
-    extern {
+    extern "C" {
         pub fn acos(n: c_double) -> c_double;
         pub fn asin(n: c_double) -> c_double;
         pub fn atan(n: c_double) -> c_double;
@@ -93,7 +92,9 @@ impl f64 {
     /// assert!(!f.is_nan());
     /// ```
     #[inline]
-    pub fn is_nan(self) -> bool { num::Float::is_nan(self) }
+    pub fn is_nan(self) -> bool {
+        num::Float::is_nan(self)
+    }
 
     /// Returns `true` if this value is positive infinity or negative infinity and
     /// false otherwise.
@@ -113,7 +114,9 @@ impl f64 {
     /// assert!(neg_inf.is_infinite());
     /// ```
     #[inline]
-    pub fn is_infinite(self) -> bool { num::Float::is_infinite(self) }
+    pub fn is_infinite(self) -> bool {
+        num::Float::is_infinite(self)
+    }
 
     /// Returns `true` if this number is neither infinite nor `NaN`.
     ///
@@ -132,31 +135,35 @@ impl f64 {
     /// assert!(!neg_inf.is_finite());
     /// ```
     #[inline]
-    pub fn is_finite(self) -> bool { num::Float::is_finite(self) }
+    pub fn is_finite(self) -> bool {
+        num::Float::is_finite(self)
+    }
 
     /// Returns `true` if the number is neither zero, infinite,
     /// [subnormal][subnormal], or `NaN`.
     ///
     /// ```
-    /// use std::f32;
+    /// use std::f64;
     ///
-    /// let min = f32::MIN_POSITIVE; // 1.17549435e-38f64
-    /// let max = f32::MAX;
-    /// let lower_than_min = 1.0e-40_f32;
-    /// let zero = 0.0f32;
+    /// let min = f64::MIN_POSITIVE; // 2.2250738585072014e-308f64
+    /// let max = f64::MAX;
+    /// let lower_than_min = 1.0e-308_f64;
+    /// let zero = 0.0f64;
     ///
     /// assert!(min.is_normal());
     /// assert!(max.is_normal());
     ///
     /// assert!(!zero.is_normal());
-    /// assert!(!f32::NAN.is_normal());
-    /// assert!(!f32::INFINITY.is_normal());
+    /// assert!(!f64::NAN.is_normal());
+    /// assert!(!f64::INFINITY.is_normal());
     /// // Values between `0` and `min` are Subnormal.
     /// assert!(!lower_than_min.is_normal());
     /// ```
-    /// [subnormal]: http://en.wikipedia.org/wiki/Denormal_number
+    /// [subnormal]: https://en.wikipedia.org/wiki/Denormal_number
     #[inline]
-    pub fn is_normal(self) -> bool { num::Float::is_normal(self) }
+    pub fn is_normal(self) -> bool {
+        num::Float::is_normal(self)
+    }
 
     /// Returns the floating point category of the number. If only one property
     /// is going to be tested, it is generally faster to use the specific
@@ -173,7 +180,9 @@ impl f64 {
     /// assert_eq!(inf.classify(), FpCategory::Infinite);
     /// ```
     #[inline]
-    pub fn classify(self) -> FpCategory { num::Float::classify(self) }
+    pub fn classify(self) -> FpCategory {
+        num::Float::classify(self)
+    }
 
     /// Returns the mantissa, base 2 exponent, and sign as integers, respectively.
     /// The original number can be recovered by `sign * mantissa * 2 ^ exponent`.
@@ -197,7 +206,10 @@ impl f64 {
     /// ```
     /// [floating-point]: ../reference.html#machine-types
     #[inline]
-    pub fn integer_decode(self) -> (u64, i16, i8) { num::Float::integer_decode(self) }
+    #[allow(deprecated)]
+    pub fn integer_decode(self) -> (u64, i16, i8) {
+        num::Float::integer_decode(self)
+    }
 
     /// Returns the largest integer less than or equal to a number.
     ///
@@ -268,7 +280,9 @@ impl f64 {
     /// assert!(abs_difference_y < 1e-10);
     /// ```
     #[inline]
-    pub fn fract(self) -> f64 { self - self.trunc() }
+    pub fn fract(self) -> f64 {
+        self - self.trunc()
+    }
 
     /// Computes the absolute value of `self`. Returns `NAN` if the
     /// number is `NAN`.
@@ -288,7 +302,9 @@ impl f64 {
     /// assert!(f64::NAN.abs().is_nan());
     /// ```
     #[inline]
-    pub fn abs(self) -> f64 { num::Float::abs(self) }
+    pub fn abs(self) -> f64 {
+        num::Float::abs(self)
+    }
 
     /// Returns a number that represents the sign of `self`.
     ///
@@ -307,7 +323,9 @@ impl f64 {
     /// assert!(f64::NAN.signum().is_nan());
     /// ```
     #[inline]
-    pub fn signum(self) -> f64 { num::Float::signum(self) }
+    pub fn signum(self) -> f64 {
+        num::Float::signum(self)
+    }
 
     /// Returns `true` if `self`'s sign bit is positive, including
     /// `+0.0` and `INFINITY`.
@@ -326,10 +344,14 @@ impl f64 {
     /// assert!(!nan.is_sign_positive() && !nan.is_sign_negative());
     /// ```
     #[inline]
-    pub fn is_sign_positive(self) -> bool { num::Float::is_sign_positive(self) }
+    pub fn is_sign_positive(self) -> bool {
+        num::Float::is_sign_positive(self)
+    }
 
     #[inline]
-    pub fn is_positive(self) -> bool { num::Float::is_sign_positive(self) }
+    pub fn is_positive(self) -> bool {
+        num::Float::is_sign_positive(self)
+    }
 
     /// Returns `true` if `self`'s sign is negative, including `-0.0`
     /// and `NEG_INFINITY`.
@@ -348,10 +370,14 @@ impl f64 {
     /// assert!(!nan.is_sign_positive() && !nan.is_sign_negative());
     /// ```
     #[inline]
-    pub fn is_sign_negative(self) -> bool { num::Float::is_sign_negative(self) }
+    pub fn is_sign_negative(self) -> bool {
+        num::Float::is_sign_negative(self)
+    }
 
     #[inline]
-    pub fn is_negative(self) -> bool { num::Float::is_sign_negative(self) }
+    pub fn is_negative(self) -> bool {
+        num::Float::is_sign_negative(self)
+    }
 
     /// Fused multiply-add. Computes `(self * a) + b` with only one rounding
     /// error. This produces a more accurate result with better performance than
@@ -381,7 +407,9 @@ impl f64 {
     /// assert!(abs_difference < 1e-10);
     /// ```
     #[inline]
-    pub fn recip(self) -> f64 { num::Float::recip(self) }
+    pub fn recip(self) -> f64 {
+        num::Float::recip(self)
+    }
 
     /// Raises a number to an integer power.
     ///
@@ -394,7 +422,9 @@ impl f64 {
     /// assert!(abs_difference < 1e-10);
     /// ```
     #[inline]
-    pub fn powi(self, n: i32) -> f64 { num::Float::powi(self, n) }
+    pub fn powi(self, n: i32) -> f64 {
+        num::Float::powi(self, n)
+    }
 
     /// Raises a number to a floating point power.
     ///
@@ -496,7 +526,9 @@ impl f64 {
     /// assert!(abs_difference_2 < 1e-10);
     /// ```
     #[inline]
-    pub fn log(self, base: f64) -> f64 { self.ln() / base.ln() }
+    pub fn log(self, base: f64) -> f64 {
+        self.ln() / base.ln()
+    }
 
     /// Returns the base 2 logarithm of the number.
     ///
@@ -511,9 +543,6 @@ impl f64 {
     #[inline]
     pub fn log2(self) -> f64 {
         self.log_wrapper(|n| {
-            #[cfg(target_os = "android")]
-            return ::sys::android::log2f64(n);
-            #[cfg(not(target_os = "android"))]
             return unsafe { intrinsics::log2f64(n) };
         })
     }
@@ -545,7 +574,9 @@ impl f64 {
     /// assert!(abs_difference < 1e-10);
     /// ```
     #[inline]
-    pub fn to_degrees(self) -> f64 { num::Float::to_degrees(self) }
+    pub fn to_degrees(self) -> f64 {
+        num::Float::to_degrees(self)
+    }
 
     /// Converts degrees to radians.
     ///
@@ -559,7 +590,9 @@ impl f64 {
     /// assert!(abs_difference < 1e-10);
     /// ```
     #[inline]
-    pub fn to_radians(self) -> f64 { num::Float::to_radians(self) }
+    pub fn to_radians(self) -> f64 {
+        num::Float::to_radians(self)
+    }
 
     /// Constructs a floating point number of `x*2^exp`.
     ///
@@ -610,9 +643,9 @@ impl f64 {
     /// ```
     /// #![feature(float_extras)]
     ///
-    /// let x = 1.0f32;
+    /// let x = 1.0f64;
     ///
-    /// let abs_diff = (x.next_after(2.0) - 1.00000011920928955078125_f32).abs();
+    /// let abs_diff = (x.next_after(2.0) - 1.0000000000000002220446049250313_f64).abs();
     ///
     /// assert!(abs_diff < 1e-10);
     /// ```
@@ -667,9 +700,9 @@ impl f64 {
     /// assert!(abs_difference_y < 1e-10);
     /// ```
     #[inline]
-     pub fn abs_sub(self, other: f64) -> f64 {
-         unsafe { cmath::fdim(self, other) }
-     }
+    pub fn abs_sub(self, other: f64) -> f64 {
+        unsafe { cmath::fdim(self, other) }
+    }
 
     /// Takes the cubic root of a number.
     ///
@@ -1201,9 +1234,12 @@ mod tests {
     }
 
     #[test]
+    #[allow(deprecated)]
     fn test_integer_decode() {
-        assert_eq!(3.14159265359f64.integer_decode(), (7074237752028906, -51, 1));
-        assert_eq!((-8573.5918555f64).integer_decode(), (4713381968463931, -39, -1));
+        assert_eq!(3.14159265359f64.integer_decode(),
+                   (7074237752028906, -51, 1));
+        assert_eq!((-8573.5918555f64).integer_decode(),
+                   (4713381968463931, -39, -1));
         assert_eq!(2f64.powf(100.0).integer_decode(), (4503599627370496, 48, 1));
         assert_eq!(0f64.integer_decode(), (0, -1075, 1));
         assert_eq!((-0f64).integer_decode(), (0, -1075, -1));
@@ -1294,7 +1330,7 @@ mod tests {
         assert_eq!((-0f64).abs(), 0f64);
         assert_eq!((-1f64).abs(), 1f64);
         assert_eq!(NEG_INFINITY.abs(), INFINITY);
-        assert_eq!((1f64/NEG_INFINITY).abs(), 0f64);
+        assert_eq!((1f64 / NEG_INFINITY).abs(), 0f64);
         assert!(NAN.abs().is_nan());
     }
 
@@ -1306,7 +1342,7 @@ mod tests {
         assert_eq!((-0f64).signum(), -1f64);
         assert_eq!((-1f64).signum(), -1f64);
         assert_eq!(NEG_INFINITY.signum(), -1f64);
-        assert_eq!((1f64/NEG_INFINITY).signum(), -1f64);
+        assert_eq!((1f64 / NEG_INFINITY).signum(), -1f64);
         assert!(NAN.signum().is_nan());
     }
 
@@ -1318,7 +1354,7 @@ mod tests {
         assert!(!(-0f64).is_sign_positive());
         assert!(!(-1f64).is_sign_positive());
         assert!(!NEG_INFINITY.is_sign_positive());
-        assert!(!(1f64/NEG_INFINITY).is_sign_positive());
+        assert!(!(1f64 / NEG_INFINITY).is_sign_positive());
         assert!(!NAN.is_sign_positive());
     }
 
@@ -1330,7 +1366,7 @@ mod tests {
         assert!((-0f64).is_sign_negative());
         assert!((-1f64).is_sign_negative());
         assert!(NEG_INFINITY.is_sign_negative());
-        assert!((1f64/NEG_INFINITY).is_sign_negative());
+        assert!((1f64 / NEG_INFINITY).is_sign_negative());
         assert!(!NAN.is_sign_negative());
     }
 
@@ -1528,6 +1564,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(deprecated)]
     fn test_ldexp() {
         let f1 = 2.0f64.powi(-123);
         let f2 = 2.0f64.powi(-111);
@@ -1548,6 +1585,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(deprecated)]
     fn test_frexp() {
         let f1 = 2.0f64.powi(-123);
         let f2 = 2.0f64.powi(-111);
@@ -1566,14 +1604,25 @@ mod tests {
         assert_eq!((-0f64).frexp(), (-0f64, 0));
     }
 
-    #[test] #[cfg_attr(windows, ignore)] // FIXME #8755
+    #[test]
+    #[cfg_attr(windows, ignore)]
+    // FIXME #8755
+    #[allow(deprecated)]
     fn test_frexp_nowin() {
         let inf: f64 = INFINITY;
         let neg_inf: f64 = NEG_INFINITY;
         let nan: f64 = NAN;
-        assert_eq!(match inf.frexp() { (x, _) => x }, inf);
-        assert_eq!(match neg_inf.frexp() { (x, _) => x }, neg_inf);
-        assert!(match nan.frexp() { (x, _) => x.is_nan() })
+        assert_eq!(match inf.frexp() {
+                       (x, _) => x,
+                   },
+                   inf);
+        assert_eq!(match neg_inf.frexp() {
+                       (x, _) => x,
+                   },
+                   neg_inf);
+        assert!(match nan.frexp() {
+            (x, _) => x.is_nan(),
+        })
     }
 
     #[test]

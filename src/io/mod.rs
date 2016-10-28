@@ -236,7 +236,7 @@
 //! to read the line and print it, so we use `()`.
 //!
 //! [result]: type.Result.html
-//! [try]: ../macro.try!.html
+//! [try]: ../macro.try.html
 //!
 //! ## Platform-specific behavior
 //!
@@ -247,20 +247,12 @@
 //! contract. The implementation of many of these functions are subject to change over
 //! time and may call fewer or more syscalls/library functions.
 
-
 use cmp;
 use rustc_unicode::str as core_str;
 use error as std_error;
 use fmt;
-use iter::{Iterator};
-use marker::Sized;
-use ops::{Drop, FnOnce};
-use option::Option::{self, Some, None};
-use result::Result::{Ok, Err};
 use result;
-use string::String;
 use str;
-use vec::Vec;
 use memchr;
 
 pub use self::buffered::{BufReader, BufWriter, LineWriter};
@@ -268,9 +260,11 @@ pub use self::buffered::IntoInnerError;
 pub use self::cursor::Cursor;
 pub use self::error::{Result, Error, ErrorKind};
 pub use self::util::{copy, sink, Sink, empty, Empty, repeat, Repeat};
+pub use self::print::{STDOUT, _print};
+
 //pub use self::stdio::{stdin, stdout, stderr, _print, Stdin, Stdout, Stderr};
 //pub use self::stdio::{StdoutLock, StderrLock, StdinLock};
-//#[doc(no_inline, hidden)]
+#[doc(no_inline, hidden)]
 //pub use self::stdio::{set_panic, set_print};
 
 pub mod prelude;
@@ -279,6 +273,8 @@ mod cursor;
 mod error;
 mod impls;
 mod util;
+mod print;
+
 //mod lazy;
 //mod stdio;
 
@@ -931,8 +927,8 @@ pub trait Write {
     /// explicitly be called. The [`write!`][write] macro should be favored to
     /// invoke this method instead.
     ///
-    /// [formatargs]: ../macro.format_args!.html
-    /// [write]: ../macro.write!.html
+    /// [formatargs]: ../macro.format_args.html
+    /// [write]: ../macro.write.html
     ///
     /// This function internally uses the [`write_all`][writeall] method on
     /// this trait and hence will continuously write data so long as no errors
@@ -1053,15 +1049,21 @@ pub trait Seek {
     ///
     /// If the seek operation completed successfully,
     /// this method returns the new position from the start of the stream.
-    /// That position can be used later with `SeekFrom::Start`.
+    /// That position can be used later with [`SeekFrom::Start`].
     ///
     /// # Errors
     ///
     /// Seeking to a negative offset is considered an error.
+    ///
+    /// [`SeekFrom::Start`]: enum.SeekFrom.html#variant.Start
     fn seek(&mut self, pos: SeekFrom) -> Result<u64>;
 }
 
 /// Enumeration of possible methods to seek within an I/O object.
+///
+/// It is used by the [`Seek`] trait.
+///
+/// [`Seek`]: trait.Seek.html
 #[derive(Copy, PartialEq, Eq, Clone, Debug)]
 pub enum SeekFrom {
     /// Set the offset to the provided number of bytes.
@@ -1437,6 +1439,24 @@ impl<T> Take<T> {
     ///
     /// This instance may reach EOF after reading fewer bytes than indicated by
     /// this method if the underlying `Read` instance reaches EOF.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::io;
+    /// use std::io::prelude::*;
+    /// use std::fs::File;
+    ///
+    /// # fn foo() -> io::Result<()> {
+    /// let f = try!(File::open("foo.txt"));
+    ///
+    /// // read at most five bytes
+    /// let handle = f.take(5);
+    ///
+    /// println!("limit: {}", handle.limit());
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn limit(&self) -> u64 { self.limit }
 }
 
@@ -1474,6 +1494,18 @@ impl<T: BufRead> BufRead for Take<T> {
     }
 }
 
+fn read_one_byte(reader: &mut Read) -> Option<Result<u8>> {
+    let mut buf = [0];
+    loop {
+        return match reader.read(&mut buf) {
+            Ok(0) => None,
+            Ok(..) => Some(Ok(buf[0])),
+            Err(ref e) if e.kind() == ErrorKind::Interrupted => continue,
+            Err(e) => Some(Err(e)),
+        };
+    }
+}
+
 /// An iterator over `u8` values of a reader.
 ///
 /// This struct is generally created by calling [`bytes()`][bytes] on a reader.
@@ -1488,12 +1520,7 @@ impl<R: Read> Iterator for Bytes<R> {
     type Item = Result<u8>;
 
     fn next(&mut self) -> Option<Result<u8>> {
-        let mut buf = [0];
-        match self.inner.read(&mut buf) {
-            Ok(0) => None,
-            Ok(..) => Some(Ok(buf[0])),
-            Err(e) => Some(Err(e)),
-        }
+        read_one_byte(&mut self.inner)
     }
 }
 
@@ -1523,11 +1550,10 @@ impl<R: Read> Iterator for Chars<R> {
     type Item = result::Result<char, CharsError>;
 
     fn next(&mut self) -> Option<result::Result<char, CharsError>> {
-        let mut buf = [0];
-        let first_byte = match self.inner.read(&mut buf) {
-            Ok(0) => return None,
-            Ok(..) => buf[0],
-            Err(e) => return Some(Err(CharsError::Other(e))),
+        let first_byte = match read_one_byte(&mut self.inner) {
+            None => return None,
+            Some(Ok(b)) => b,
+            Some(Err(e)) => return Some(Err(CharsError::Other(e))),
         };
         let width = core_str::utf8_char_width(first_byte);
         if width == 1 { return Some(Ok(first_byte as char)) }
@@ -1539,6 +1565,7 @@ impl<R: Read> Iterator for Chars<R> {
                 match self.inner.read(&mut buf[start..width]) {
                     Ok(0) => return Some(Err(CharsError::NotUtf8)),
                     Ok(n) => start += n,
+                    Err(ref e) if e.kind() == ErrorKind::Interrupted => continue,
                     Err(e) => return Some(Err(CharsError::Other(e))),
                 }
             }
@@ -1639,12 +1666,14 @@ impl<B: BufRead> Iterator for Lines<B> {
 
 #[cfg(test)]
 mod tests {
-    use prelude::v1::*;
     use io::prelude::*;
     use io;
     use super::Cursor;
-    use test;
     use super::repeat;
+    use test;
+
+    use collections::{Vec, String};
+    use collections::string::ToString;
 
     #[test]
     fn read_until() {

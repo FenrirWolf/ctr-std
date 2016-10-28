@@ -6,18 +6,13 @@
   "target-endian": "little",
   "target-pointer-width": "32",
   "arch": "arm",
-  "os": "linux",
+  "os": "none",
   "cpu": "mpcore",
   "features": "+vfp2",
   "relocation-model": "static",
-  "linker-is-gnu": true,
-  "has-rpath": true,
-  "morestack": false,
-  "disable-redzone": true,
   "executables": true,
-  "dynamic-linking": false,
-  "no-compiler-rt": true,
   "exe-suffix": ".elf",
+  "panic-strategy": "abort",
   "pre-link-args": [
     "-specs=3dsx.specs",
     "-march=armv6k",
@@ -26,14 +21,11 @@
     "-mtp=soft"
   ],
   "post-link-args": [
-    "-lsysbase",
     "-lc",
     "-lm",
     "-lsysbase",
-    "-lgcc",
     "-lc",
-    "-lsysbase"
-  ],
-  "is-like-windows": false,
-  "function-sections": false
+    "-lgcc",
+    "-lc"
+  ]
 }

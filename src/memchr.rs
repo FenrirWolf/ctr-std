@@ -33,16 +33,13 @@
 /// assert_eq!(memchr(b'k', haystack), Some(8));
 /// ```
 pub fn memchr(needle: u8, haystack: &[u8]) -> Option<usize> {
-    // libc memchr
-    #[cfg(not(target_os = "windows"))]
     fn memchr_specific(needle: u8, haystack: &[u8]) -> Option<usize> {
-        use libc;
+        use libctru::libc;
 
         let p = unsafe {
-            libc::memchr(
-                haystack.as_ptr() as *const libc::c_void,
-                needle as libc::c_int,
-                haystack.len() as libc::size_t)
+            libc::memchr(haystack.as_ptr() as *const libc::c_void,
+                         needle as libc::c_int,
+                         haystack.len() as libc::size_t)
         };
         if p.is_null() {
             None
@@ -50,13 +47,6 @@ pub fn memchr(needle: u8, haystack: &[u8]) -> Option<usize> {
             Some(p as usize - (haystack.as_ptr() as usize))
         }
     }
-
-    // use fallback on windows, since it's faster
-    #[cfg(target_os = "windows")]
-    fn memchr_specific(needle: u8, haystack: &[u8]) -> Option<usize> {
-        fallback::memchr(needle, haystack)
-    }
-
     memchr_specific(needle, haystack)
 }
 
@@ -76,18 +66,17 @@ pub fn memchr(needle: u8, haystack: &[u8]) -> Option<usize> {
 /// assert_eq!(memrchr(b'o', haystack), Some(17));
 /// ```
 pub fn memrchr(needle: u8, haystack: &[u8]) -> Option<usize> {
-
-    #[cfg(target_os = "linux")]
     fn memrchr_specific(needle: u8, haystack: &[u8]) -> Option<usize> {
-        use libc;
+        use libctru::libc;
 
         // GNU's memrchr() will - unlike memchr() - error if haystack is empty.
-        if haystack.is_empty() {return None}
+        if haystack.is_empty() {
+            return None;
+        }
         let p = unsafe {
-            libc::memrchr(
-                haystack.as_ptr() as *const libc::c_void,
-                needle as libc::c_int,
-                haystack.len() as libc::size_t)
+            libc::memrchr(haystack.as_ptr() as *const libc::c_void,
+                          needle as libc::c_int,
+                          haystack.len() as libc::size_t)
         };
         if p.is_null() {
             None
@@ -95,19 +84,13 @@ pub fn memrchr(needle: u8, haystack: &[u8]) -> Option<usize> {
             Some(p as usize - (haystack.as_ptr() as usize))
         }
     }
-
-    #[cfg(not(target_os = "linux"))]
-    fn memrchr_specific(needle: u8, haystack: &[u8]) -> Option<usize> {
-        fallback::memrchr(needle, haystack)
-    }
-
     memrchr_specific(needle, haystack)
 }
 
 #[allow(dead_code)]
 mod fallback {
-    use cmp;
-    use mem;
+    use core::cmp;
+    use core::mem;
 
     const LO_U64: u64 = 0x0101010101010101;
     const HI_U64: u64 = 0x8080808080808080;
@@ -158,7 +141,7 @@ mod fallback {
         let usize_bytes = mem::size_of::<usize>();
 
         // search up to an aligned boundary
-        let align = (ptr as usize) & (usize_bytes- 1);
+        let align = (ptr as usize) & (usize_bytes - 1);
         let mut offset;
         if align > 0 {
             offset = cmp::min(usize_bytes - align, len);
@@ -209,7 +192,11 @@ mod fallback {
         let end_align = (ptr as usize + len) & (usize_bytes - 1);
         let mut offset;
         if end_align > 0 {
-            offset = len - cmp::min(usize_bytes - end_align, len);
+            offset = if end_align >= len {
+                0
+            } else {
+                len - end_align
+            };
             if let Some(index) = text[offset..].iter().rposition(|elt| *elt == x) {
                 return Some(offset + index);
             }
@@ -239,7 +226,7 @@ mod fallback {
         text[..offset].iter().rposition(|elt| *elt == x)
     }
 
-    // test fallback implementations on all plattforms
+    // test fallback implementations on all platforms
     #[test]
     fn matches_one() {
         assert_eq!(Some(0), memchr(b'a', b"a"));
@@ -308,6 +295,17 @@ mod fallback {
     #[test]
     fn no_match_reversed() {
         assert_eq!(None, memrchr(b'a', b"xyz"));
+    }
+
+    #[test]
+    fn each_alignment_reversed() {
+        let mut data = [1u8; 64];
+        let needle = 2;
+        let pos = 40;
+        data[pos] = needle;
+        for start in 0..16 {
+            assert_eq!(Some(pos - start), memrchr(needle, &data[start..]));
+        }
     }
 }
 
@@ -384,5 +382,16 @@ mod tests {
     #[test]
     fn no_match_reversed() {
         assert_eq!(None, memrchr(b'a', b"xyz"));
+    }
+
+    #[test]
+    fn each_alignment() {
+        let mut data = [1u8; 64];
+        let needle = 2;
+        let pos = 40;
+        data[pos] = needle;
+        for start in 0..16 {
+            assert_eq!(Some(pos - start), memchr(needle, &data[start..]));
+        }
     }
 }

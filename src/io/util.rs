@@ -76,14 +76,11 @@ pub struct Empty { _priv: () }
 /// A slightly sad example of not reading anything into a buffer:
 ///
 /// ```
-/// use std::io;
-/// use std::io::Read;
+/// use std::io::{self, Read};
 ///
-/// # fn foo() -> io::Result<String> {
 /// let mut buffer = String::new();
-/// try!(io::empty().read_to_string(&mut buffer));
-/// # Ok(buffer)
-/// # }
+/// io::empty().read_to_string(&mut buffer).unwrap();
+/// assert!(buffer.is_empty());
 /// ```
 pub fn empty() -> Empty { Empty { _priv: () } }
 
@@ -107,6 +104,16 @@ pub struct Repeat { byte: u8 }
 ///
 /// All reads from this reader will succeed by filling the specified buffer with
 /// the given byte.
+///
+/// # Examples
+///
+/// ```
+/// use std::io::{self, Read};
+///
+/// let mut buffer = [0; 3];
+/// io::repeat(0b101).read_exact(&mut buffer).unwrap();
+/// assert_eq!(buffer, [0b101, 0b101, 0b101]);
+/// ```
 pub fn repeat(byte: u8) -> Repeat { Repeat { byte: byte } }
 
 impl Read for Repeat {
@@ -130,6 +137,16 @@ pub struct Sink { _priv: () }
 ///
 /// All calls to `write` on the returned instance will return `Ok(buf.len())`
 /// and the contents of the buffer will not be inspected.
+///
+/// # Examples
+///
+/// ```rust
+/// use std::io::{self, Write};
+///
+/// let buffer = vec![1, 2, 3, 5, 8];
+/// let num_bytes = io::sink().write(&buffer).unwrap();
+/// assert_eq!(num_bytes, 5);
+/// ```
 pub fn sink() -> Sink { Sink { _priv: () } }
 
 impl Write for Sink {
@@ -139,8 +156,6 @@ impl Write for Sink {
 
 #[cfg(test)]
 mod tests {
-    use prelude::v1::*;
-
     use io::prelude::*;
     use io::{copy, sink, empty, repeat};
 

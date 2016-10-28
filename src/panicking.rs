@@ -8,57 +8,49 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Panic support for libcore
-//!
-//! The core library cannot define panicking, but it does *declare* panicking. This
-//! means that the functions inside of libcore are allowed to panic, but to be
-//! useful an upstream crate must define panicking for libcore to use. The current
-//! interface for panicking is:
-//!
-//! ```ignore
-//! fn panic_impl(fmt: fmt::Arguments, &(&'static str, u32)) -> !;
-//! ```
-//!
-//! This definition allows for panicking with any general message, but it does not
-//! allow for failing with a `Box<Any>` value. The reason for this is that libcore
-//! is not allowed to allocate.
-//!
-//! This module contains a few other panicking functions, but these are just the
-//! necessary lang items for the compiler. All panics are funneled through this
-//! one function. Currently, the actual symbol is declared in the standard
-//! library, but the location of this may change over time.
+//! Implementation of various bits and pieces of the `panic!` macro and
+//! associated runtime pieces.
 
-#![allow(unused, dead_code, missing_docs)]
-use fmt;
+use fmt::{self, Display};
+use any::Any;
 
-#[cold]
-#[inline(never)] // this is the slow path, always
-pub fn panic(expr_file_line: &(&'static str, &'static str, u32)) -> ! {
-    // Use Arguments::new_v1 instead of format_args!("{}", expr) to potentially
-    // reduce size overhead. The format_args! macro uses str's Display trait to
-    // write expr, which calls Formatter::pad, which must accommodate string
-    // truncation and padding (even though none is used here). Using
-    // Arguments::new_v1 may allow the compiler to omit Formatter::pad from the
-    // output binary, saving up to a few kilobytes.
-    let (expr, file, line) = *expr_file_line;
-    panic_fmt(fmt::Arguments::new_v1(&[expr], &[]), &(file, line))
-}
+///The compiler wants this to be here. Otherwise it won't be happy. And we like happy compilers.
+#[lang = "eh_personality"]
+extern fn eh_personality() {}
 
-#[cold]
-#[inline(never)]
-pub fn panic_bounds_check(file_line: &(&'static str, u32), index: usize, len: usize) -> ! {
-    panic_fmt(format_args!("index out of bounds: the len is {} but the index is {}",
-                           len,
-                           index),
-              file_line)
-}
-
-#[cold]
-#[inline(never)]
+/// Entry point of panic from the libcore crate.
 #[lang = "panic_fmt"]
-pub fn panic_fmt(fmt: fmt::Arguments, file_line: &(&'static str, u32)) -> ! {
+extern fn panic_fmt(msg: fmt::Arguments, file: &'static str, line: u32) -> ! {
+    begin_panic_fmt(&msg, &(file, line))
+}
+
+/// The entry point for panicking with a formatted message.
+///
+/// This is designed to reduce the amount of code required at the call
+/// site as much as possible (so that `panic!()` has as low an impact
+/// on (e.g.) the inlining of other functions as possible), by moving
+/// the actual formatting into this shared place.
+#[inline(never)]
+#[cold]
+pub fn begin_panic_fmt(msg: &fmt::Arguments, file_line: &(&'static str, u32)) -> ! {
+    use fmt::Write;
+
+    let mut s = String::new();
+    let _ = s.write_fmt(*msg);
+    begin_panic(s, file_line);
+}
+
+/// This is where the main panic logic happens.
+#[inline(never)]
+#[cold]
+pub fn begin_panic<M: Any + Send + Display>(msg: M, file_line: &(&'static str, u32)) -> ! {
+    let msg = Box::new(msg);
+    let (file, line) = *file_line;
+
+    println!("--------------------------------------------------");
+    println!("PANIC in {} at line {}:", file, line);
+    println!("    {}", msg);
+    println!("\x1b[29;00H--------------------------------------------------");
+
     loop {}
 }
-
-#[lang = "eh_personality"]
-extern "C" fn eh_personality() {}
