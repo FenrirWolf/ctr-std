@@ -37,19 +37,7 @@ const TMPBUF_SZ: usize = 128;
 
 #[cfg(not(target_os = "dragonfly"))]
 pub fn errno() -> i32 {
-    #[cfg_attr(any(target_os = "linux", target_os = "emscripten"),
-               link_name = "__errno_location")]
-    #[cfg_attr(any(target_os = "bitrig",
-                   target_os = "netbsd",
-                   target_os = "openbsd",
-                   target_os = "android",
-                   target_env = "newlib"),
-                        link_name = "__errno")]
-    #[cfg_attr(target_os = "solaris", link_name = "___errno")]
-    #[cfg_attr(any(target_os = "macos",
-                                  target_os = "ios",
-                                  target_os = "freebsd"),
-                              link_name = "__error")]
+    #[cfg_attr(any(target_os = "linux", target_env = "newlib"), link_name = "__errno")]
     extern "C" {
         fn __errno() -> *const c_int;
     }

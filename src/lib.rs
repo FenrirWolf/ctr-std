@@ -24,11 +24,14 @@
 #![feature(type_ascription)]
 #![feature(unicode)]
 #![feature(unique)]
-#![feature(unsafe_no_drop_flag)]
 #![feature(unwind_attributes)]
 #![feature(question_mark)]
 #![feature(zero_one)]
 #![no_std]
+
+#[prelude_import]
+#[allow(unused)]
+use prelude::v1::*;
 
 #[macro_reexport(assert, assert_eq, debug_assert, debug_assert_eq,
                  unreachable, unimplemented, write, writeln)]
@@ -81,7 +84,6 @@ pub use rustc_unicode::char;
 #[macro_use]
 pub mod macros;
 
-#[prelude_import]
 pub mod prelude;
 
 pub use core::isize;
@@ -103,7 +105,7 @@ pub mod ascii;
 
 pub mod num;
 
-pub mod collections;
+//pub mod collections;
 pub mod ffi;
 pub mod fs;
 pub mod io;
