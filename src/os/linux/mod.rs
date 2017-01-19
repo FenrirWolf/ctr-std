@@ -8,17 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! The I/O Prelude
-//!
-//! The purpose of this module is to alleviate imports of many common I/O traits
-//! by adding a glob import to the top of I/O heavy modules:
-//!
-//! ```
-//! # #![allow(unused_imports)]
-//! use std::io::prelude::*;
-//! ```
+//! Linux-specific definitions
 
-#![stable(feature = "rust1", since = "1.0.0")]
+#![stable(feature = "raw_ext", since = "1.1.0")]
 
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use super::{Read, Write, BufRead, Seek};
+pub mod raw;
+pub mod fs;

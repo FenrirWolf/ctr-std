@@ -10,8 +10,11 @@
 
 //! Operations on ASCII strings and characters.
 
+#![stable(feature = "rust1", since = "1.0.0")]
+
 use mem;
 use ops::Range;
+use iter::FusedIterator;
 
 /// Extension methods for ASCII-subset only operations on string slices.
 ///
@@ -35,8 +38,10 @@ use ops::Range;
 /// it will not get mapped to an uppercase variant, resulting in `"CAF\u{e9}"`.
 ///
 /// [combining character]: https://en.wikipedia.org/wiki/Combining_character
+#[stable(feature = "rust1", since = "1.0.0")]
 pub trait AsciiExt {
     /// Container type for copied ASCII characters.
+    #[stable(feature = "rust1", since = "1.0.0")]
     type Owned;
 
     /// Checks if the value is within the ASCII range.
@@ -52,6 +57,7 @@ pub trait AsciiExt {
     /// assert!(ascii.is_ascii());
     /// assert!(!utf8.is_ascii());
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn is_ascii(&self) -> bool;
 
     /// Makes a copy of the string in ASCII upper case.
@@ -70,6 +76,7 @@ pub trait AsciiExt {
     /// assert_eq!('A', ascii.to_ascii_uppercase());
     /// assert_eq!('❤', utf8.to_ascii_uppercase());
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn to_ascii_uppercase(&self) -> Self::Owned;
 
     /// Makes a copy of the string in ASCII lower case.
@@ -88,6 +95,7 @@ pub trait AsciiExt {
     /// assert_eq!('a', ascii.to_ascii_lowercase());
     /// assert_eq!('❤', utf8.to_ascii_lowercase());
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn to_ascii_lowercase(&self) -> Self::Owned;
 
     /// Checks that two strings are an ASCII case-insensitive match.
@@ -109,6 +117,7 @@ pub trait AsciiExt {
     /// assert!(ascii1.eq_ignore_ascii_case(&ascii3));
     /// assert!(!ascii1.eq_ignore_ascii_case(&ascii4));
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn eq_ignore_ascii_case(&self, other: &Self) -> bool;
 
     /// Converts this type to its ASCII upper case equivalent in-place.
@@ -126,6 +135,7 @@ pub trait AsciiExt {
     ///
     /// assert_eq!('A', ascii);
     /// ```
+    #[stable(feature = "ascii", since = "1.9.0")]
     fn make_ascii_uppercase(&mut self);
 
     /// Converts this type to its ASCII lower case equivalent in-place.
@@ -143,9 +153,11 @@ pub trait AsciiExt {
     ///
     /// assert_eq!('a', ascii);
     /// ```
+    #[stable(feature = "ascii", since = "1.9.0")]
     fn make_ascii_lowercase(&mut self);
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl AsciiExt for str {
     type Owned = String;
 
@@ -186,6 +198,7 @@ impl AsciiExt for str {
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl AsciiExt for [u8] {
     type Owned = Vec<u8>;
     #[inline]
@@ -228,6 +241,7 @@ impl AsciiExt for [u8] {
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl AsciiExt for u8 {
     type Owned = u8;
     #[inline]
@@ -246,6 +260,7 @@ impl AsciiExt for u8 {
     fn make_ascii_lowercase(&mut self) { *self = self.to_ascii_lowercase(); }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl AsciiExt for char {
     type Owned = char;
     #[inline]
@@ -284,6 +299,7 @@ impl AsciiExt for char {
 
 /// An iterator over the escaped version of a byte, constructed via
 /// `std::ascii::escape_default`.
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct EscapeDefault {
     range: Range<usize>,
     data: [u8; 4],
@@ -314,6 +330,7 @@ pub struct EscapeDefault {
 /// assert_eq!(b'\\', escaped.next().unwrap());
 /// assert_eq!(b't', escaped.next().unwrap());
 /// ```
+#[stable(feature = "rust1", since = "1.0.0")]
 pub fn escape_default(c: u8) -> EscapeDefault {
     let (data, len) = match c {
         b'\t' => ([b'\\', b't', 0, 0], 2),
@@ -336,17 +353,23 @@ pub fn escape_default(c: u8) -> EscapeDefault {
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl Iterator for EscapeDefault {
     type Item = u8;
     fn next(&mut self) -> Option<u8> { self.range.next().map(|i| self.data[i]) }
     fn size_hint(&self) -> (usize, Option<usize>) { self.range.size_hint() }
 }
+#[stable(feature = "rust1", since = "1.0.0")]
 impl DoubleEndedIterator for EscapeDefault {
     fn next_back(&mut self) -> Option<u8> {
         self.range.next_back().map(|i| self.data[i])
     }
 }
+#[stable(feature = "rust1", since = "1.0.0")]
 impl ExactSizeIterator for EscapeDefault {}
+#[unstable(feature = "fused", issue = "35602")]
+impl FusedIterator for EscapeDefault {}
+
 
 static ASCII_LOWERCASE_MAP: [u8; 256] = [
     0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
@@ -430,8 +453,7 @@ static ASCII_UPPERCASE_MAP: [u8; 256] = [
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std_unicode::char::from_u32;
-    use collections::string::ToString;
+    use char::from_u32;
 
     #[test]
     fn test_is_ascii() {
@@ -446,9 +468,7 @@ mod tests {
         assert!("banana\0\u{7F}".is_ascii());
         assert!("banana\0\u{7F}".chars().all(|c| c.is_ascii()));
         assert!(!"ประเทศไทย中华Việt Nam".chars().all(|c| c.is_ascii()));
-
-        // NOTE: This test fails for some reason.
-        assert!(!"ประเทศไทย中华ệ ".chars().any(|c| c.is_ascii()));
+        assert!(!"ประเทศไทย中华ệ ".chars().any(|c| c.is_ascii()));
     }
 
     #[test]

@@ -16,6 +16,12 @@
 //! and should be considered as private implementation details for the
 //! time being.
 
+#![unstable(feature = "rt",
+            reason = "this public module should not exist and is highly likely \
+                      to disappear",
+            issue = "0")]
+#![doc(hidden)]
+
 use mem;
 
 // Reexport some of our utilities which are expected by other crates.

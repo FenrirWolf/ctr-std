@@ -13,17 +13,19 @@
 //! This module provides some extra types that are useful when doing numerical
 //! work. See the individual documentation for each piece for more information.
 
+#![stable(feature = "rust1", since = "1.0.0")]
 #![allow(missing_docs)]
 
+#[stable(feature = "rust1", since = "1.0.0")]
 #[allow(deprecated)]
 pub use core::num::{Zero, One};
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use core::num::{FpCategory, ParseIntError, ParseFloatError, TryFromIntError};
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use core::num::Wrapping;
 
-#[cfg(test)]
-use fmt;
-#[cfg(test)]
-use ops::{Add, Sub, Mul, Div, Rem};
+#[cfg(test)] use fmt;
+#[cfg(test)] use ops::{Add, Sub, Mul, Div, Rem};
 
 /// Helper function for testing numeric operations
 #[cfg(test)]
@@ -34,11 +36,11 @@ pub fn test_num<T>(ten: T, two: T) where
      + Rem<Output=T> + fmt::Debug
      + Copy
 {
-    assert_eq!(ten.add(two), ten + two);
-    assert_eq!(ten.sub(two), ten - two);
-    assert_eq!(ten.mul(two), ten * two);
-    assert_eq!(ten.div(two), ten / two);
-    assert_eq!(ten.rem(two), ten % two);
+    assert_eq!(ten.add(two),  ten + two);
+    assert_eq!(ten.sub(two),  ten - two);
+    assert_eq!(ten.mul(two),  ten * two);
+    assert_eq!(ten.div(two),  ten / two);
+    assert_eq!(ten.rem(two),  ten % two);
 }
 
 #[cfg(test)]
@@ -54,9 +56,9 @@ mod tests {
     fn test_saturating_add_uint() {
         use usize::MAX;
         assert_eq!(3_usize.saturating_add(5_usize), 8_usize);
-        assert_eq!(3_usize.saturating_add(MAX - 1), MAX);
+        assert_eq!(3_usize.saturating_add(MAX-1), MAX);
         assert_eq!(MAX.saturating_add(MAX), MAX);
-        assert_eq!((MAX - 2).saturating_add(1), MAX - 1);
+        assert_eq!((MAX-2).saturating_add(1), MAX-1);
     }
 
     #[test]
@@ -65,16 +67,16 @@ mod tests {
         assert_eq!(5_usize.saturating_sub(3_usize), 2_usize);
         assert_eq!(3_usize.saturating_sub(5_usize), 0_usize);
         assert_eq!(0_usize.saturating_sub(1_usize), 0_usize);
-        assert_eq!((MAX - 1).saturating_sub(MAX), 0);
+        assert_eq!((MAX-1).saturating_sub(MAX), 0);
     }
 
     #[test]
     fn test_saturating_add_int() {
-        use isize::{MIN, MAX};
+        use isize::{MIN,MAX};
         assert_eq!(3i32.saturating_add(5), 8);
-        assert_eq!(3isize.saturating_add(MAX - 1), MAX);
+        assert_eq!(3isize.saturating_add(MAX-1), MAX);
         assert_eq!(MAX.saturating_add(MAX), MAX);
-        assert_eq!((MAX - 2).saturating_add(1), MAX - 1);
+        assert_eq!((MAX-2).saturating_add(1), MAX-1);
         assert_eq!(3i32.saturating_add(-5), -2);
         assert_eq!(MIN.saturating_add(-1), MIN);
         assert_eq!((-2isize).saturating_add(-MAX), MIN);
@@ -82,14 +84,14 @@ mod tests {
 
     #[test]
     fn test_saturating_sub_int() {
-        use isize::{MIN, MAX};
+        use isize::{MIN,MAX};
         assert_eq!(3i32.saturating_sub(5), -2);
         assert_eq!(MIN.saturating_sub(1), MIN);
         assert_eq!((-2isize).saturating_sub(MAX), MIN);
         assert_eq!(3i32.saturating_sub(-5), 8);
-        assert_eq!(3isize.saturating_sub(-(MAX - 1)), MAX);
+        assert_eq!(3isize.saturating_sub(-(MAX-1)), MAX);
         assert_eq!(MAX.saturating_sub(-MAX), MAX);
-        assert_eq!((MAX - 2).saturating_sub(-1), MAX - 1);
+        assert_eq!((MAX-2).saturating_sub(-1), MAX-1);
     }
 
     #[test]
@@ -193,7 +195,7 @@ mod tests {
 
     #[test]
     fn test_pow() {
-        fn naive_pow<T: Mul<Output = T> + Copy>(one: T, base: T, exp: usize) -> T {
+        fn naive_pow<T: Mul<Output=T> + Copy>(one: T, base: T, exp: usize) -> T {
             (0..exp).fold(one, |acc, _| acc * base)
         }
         macro_rules! assert_pow {
@@ -286,8 +288,6 @@ mod bench {
     #[bench]
     fn bench_pow_function(b: &mut Bencher) {
         let v = (0..1024).collect::<Vec<u32>>();
-        b.iter(|| {
-            v.iter().fold(0u32, |old, new| old.pow(*new as u32));
-        });
+        b.iter(|| {v.iter().fold(0u32, |old, new| old.pow(*new as u32));});
     }
 }

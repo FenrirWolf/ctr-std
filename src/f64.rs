@@ -2,8 +2,9 @@
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
-// Licensed under the Apache License, Version 2.0  or the MIT license
-// , at your
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
@@ -11,21 +12,27 @@
 //!
 //! *[See also the `f64` primitive type](../primitive.f64.html).*
 
+#![stable(feature = "rust1", since = "1.0.0")]
 #![allow(missing_docs)]
 
 #[cfg(not(test))]
 use core::num;
 #[cfg(not(test))]
-use core::intrinsics;
+use intrinsics;
 #[cfg(not(test))]
 use libc::c_int;
 #[cfg(not(test))]
-use core::num::FpCategory;
+use num::FpCategory;
 
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use core::f64::{RADIX, MANTISSA_DIGITS, DIGITS, EPSILON};
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use core::f64::{MIN_EXP, MAX_EXP, MIN_10_EXP};
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use core::f64::{MAX_10_EXP, NAN, INFINITY, NEG_INFINITY};
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use core::f64::{MIN, MIN_POSITIVE, MAX};
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use core::f64::consts;
 
 #[allow(dead_code)]
@@ -33,7 +40,7 @@ mod cmath {
     use libc::{c_double, c_int};
 
     #[link_name = "m"]
-    extern "C" {
+    extern {
         pub fn acos(n: c_double) -> c_double;
         pub fn asin(n: c_double) -> c_double;
         pub fn atan(n: c_double) -> c_double;
@@ -91,10 +98,9 @@ impl f64 {
     /// assert!(nan.is_nan());
     /// assert!(!f.is_nan());
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn is_nan(self) -> bool {
-        num::Float::is_nan(self)
-    }
+    pub fn is_nan(self) -> bool { num::Float::is_nan(self) }
 
     /// Returns `true` if this value is positive infinity or negative infinity and
     /// false otherwise.
@@ -113,10 +119,9 @@ impl f64 {
     /// assert!(inf.is_infinite());
     /// assert!(neg_inf.is_infinite());
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn is_infinite(self) -> bool {
-        num::Float::is_infinite(self)
-    }
+    pub fn is_infinite(self) -> bool { num::Float::is_infinite(self) }
 
     /// Returns `true` if this number is neither infinite nor `NaN`.
     ///
@@ -134,10 +139,9 @@ impl f64 {
     /// assert!(!inf.is_finite());
     /// assert!(!neg_inf.is_finite());
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn is_finite(self) -> bool {
-        num::Float::is_finite(self)
-    }
+    pub fn is_finite(self) -> bool { num::Float::is_finite(self) }
 
     /// Returns `true` if the number is neither zero, infinite,
     /// [subnormal][subnormal], or `NaN`.
@@ -160,10 +164,9 @@ impl f64 {
     /// assert!(!lower_than_min.is_normal());
     /// ```
     /// [subnormal]: https://en.wikipedia.org/wiki/Denormal_number
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn is_normal(self) -> bool {
-        num::Float::is_normal(self)
-    }
+    pub fn is_normal(self) -> bool { num::Float::is_normal(self) }
 
     /// Returns the floating point category of the number. If only one property
     /// is going to be tested, it is generally faster to use the specific
@@ -179,10 +182,9 @@ impl f64 {
     /// assert_eq!(num.classify(), FpCategory::Normal);
     /// assert_eq!(inf.classify(), FpCategory::Infinite);
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn classify(self) -> FpCategory {
-        num::Float::classify(self)
-    }
+    pub fn classify(self) -> FpCategory { num::Float::classify(self) }
 
     /// Returns the mantissa, base 2 exponent, and sign as integers, respectively.
     /// The original number can be recovered by `sign * mantissa * 2 ^ exponent`.
@@ -205,11 +207,14 @@ impl f64 {
     /// assert!(abs_difference < 1e-10);
     /// ```
     /// [floating-point]: ../reference.html#machine-types
+    #[unstable(feature = "float_extras", reason = "signature is undecided",
+               issue = "27752")]
+    #[rustc_deprecated(since = "1.11.0",
+                       reason = "never really came to fruition and easily \
+                                 implementable outside the standard library")]
     #[inline]
     #[allow(deprecated)]
-    pub fn integer_decode(self) -> (u64, i16, i8) {
-        num::Float::integer_decode(self)
-    }
+    pub fn integer_decode(self) -> (u64, i16, i8) { num::Float::integer_decode(self) }
 
     /// Returns the largest integer less than or equal to a number.
     ///
@@ -220,6 +225,7 @@ impl f64 {
     /// assert_eq!(f.floor(), 3.0);
     /// assert_eq!(g.floor(), 3.0);
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn floor(self) -> f64 {
         unsafe { intrinsics::floorf64(self) }
@@ -234,6 +240,7 @@ impl f64 {
     /// assert_eq!(f.ceil(), 4.0);
     /// assert_eq!(g.ceil(), 4.0);
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn ceil(self) -> f64 {
         unsafe { intrinsics::ceilf64(self) }
@@ -249,6 +256,7 @@ impl f64 {
     /// assert_eq!(f.round(), 3.0);
     /// assert_eq!(g.round(), -3.0);
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn round(self) -> f64 {
         unsafe { intrinsics::roundf64(self) }
@@ -263,6 +271,7 @@ impl f64 {
     /// assert_eq!(f.trunc(), 3.0);
     /// assert_eq!(g.trunc(), -3.0);
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn trunc(self) -> f64 {
         unsafe { intrinsics::truncf64(self) }
@@ -279,10 +288,9 @@ impl f64 {
     /// assert!(abs_difference_x < 1e-10);
     /// assert!(abs_difference_y < 1e-10);
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn fract(self) -> f64 {
-        self - self.trunc()
-    }
+    pub fn fract(self) -> f64 { self - self.trunc() }
 
     /// Computes the absolute value of `self`. Returns `NAN` if the
     /// number is `NAN`.
@@ -301,10 +309,9 @@ impl f64 {
     ///
     /// assert!(f64::NAN.abs().is_nan());
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn abs(self) -> f64 {
-        num::Float::abs(self)
-    }
+    pub fn abs(self) -> f64 { num::Float::abs(self) }
 
     /// Returns a number that represents the sign of `self`.
     ///
@@ -322,10 +329,9 @@ impl f64 {
     ///
     /// assert!(f64::NAN.signum().is_nan());
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn signum(self) -> f64 {
-        num::Float::signum(self)
-    }
+    pub fn signum(self) -> f64 { num::Float::signum(self) }
 
     /// Returns `true` if `self`'s sign bit is positive, including
     /// `+0.0` and `INFINITY`.
@@ -343,15 +349,14 @@ impl f64 {
     /// // Requires both tests to determine if is `NaN`
     /// assert!(!nan.is_sign_positive() && !nan.is_sign_negative());
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn is_sign_positive(self) -> bool {
-        num::Float::is_sign_positive(self)
-    }
+    pub fn is_sign_positive(self) -> bool { num::Float::is_sign_positive(self) }
 
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_deprecated(since = "1.0.0", reason = "renamed to is_sign_positive")]
     #[inline]
-    pub fn is_positive(self) -> bool {
-        num::Float::is_sign_positive(self)
-    }
+    pub fn is_positive(self) -> bool { num::Float::is_sign_positive(self) }
 
     /// Returns `true` if `self`'s sign is negative, including `-0.0`
     /// and `NEG_INFINITY`.
@@ -369,15 +374,14 @@ impl f64 {
     /// // Requires both tests to determine if is `NaN`.
     /// assert!(!nan.is_sign_positive() && !nan.is_sign_negative());
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn is_sign_negative(self) -> bool {
-        num::Float::is_sign_negative(self)
-    }
+    pub fn is_sign_negative(self) -> bool { num::Float::is_sign_negative(self) }
 
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_deprecated(since = "1.0.0", reason = "renamed to is_sign_negative")]
     #[inline]
-    pub fn is_negative(self) -> bool {
-        num::Float::is_sign_negative(self)
-    }
+    pub fn is_negative(self) -> bool { num::Float::is_sign_negative(self) }
 
     /// Fused multiply-add. Computes `(self * a) + b` with only one rounding
     /// error. This produces a more accurate result with better performance than
@@ -393,6 +397,7 @@ impl f64 {
     ///
     /// assert!(abs_difference < 1e-10);
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn mul_add(self, a: f64, b: f64) -> f64 {
         unsafe { intrinsics::fmaf64(self, a, b) }
@@ -406,10 +411,9 @@ impl f64 {
     ///
     /// assert!(abs_difference < 1e-10);
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn recip(self) -> f64 {
-        num::Float::recip(self)
-    }
+    pub fn recip(self) -> f64 { num::Float::recip(self) }
 
     /// Raises a number to an integer power.
     ///
@@ -421,10 +425,9 @@ impl f64 {
     ///
     /// assert!(abs_difference < 1e-10);
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn powi(self, n: i32) -> f64 {
-        num::Float::powi(self, n)
-    }
+    pub fn powi(self, n: i32) -> f64 { num::Float::powi(self, n) }
 
     /// Raises a number to a floating point power.
     ///
@@ -434,6 +437,7 @@ impl f64 {
     ///
     /// assert!(abs_difference < 1e-10);
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn powf(self, n: f64) -> f64 {
         unsafe { intrinsics::powf64(self, n) }
@@ -452,6 +456,7 @@ impl f64 {
     /// assert!(abs_difference < 1e-10);
     /// assert!(negative.sqrt().is_nan());
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn sqrt(self) -> f64 {
         if self < 0.0 {
@@ -473,6 +478,7 @@ impl f64 {
     ///
     /// assert!(abs_difference < 1e-10);
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn exp(self) -> f64 {
         unsafe { intrinsics::expf64(self) }
@@ -488,6 +494,7 @@ impl f64 {
     ///
     /// assert!(abs_difference < 1e-10);
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn exp2(self) -> f64 {
         unsafe { intrinsics::exp2f64(self) }
@@ -505,6 +512,7 @@ impl f64 {
     ///
     /// assert!(abs_difference < 1e-10);
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn ln(self) -> f64 {
         self.log_wrapper(|n| { unsafe { intrinsics::logf64(n) } })
@@ -525,10 +533,9 @@ impl f64 {
     /// assert!(abs_difference_10 < 1e-10);
     /// assert!(abs_difference_2 < 1e-10);
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn log(self, base: f64) -> f64 {
-        self.ln() / base.ln()
-    }
+    pub fn log(self, base: f64) -> f64 { self.ln() / base.ln() }
 
     /// Returns the base 2 logarithm of the number.
     ///
@@ -540,9 +547,13 @@ impl f64 {
     ///
     /// assert!(abs_difference < 1e-10);
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn log2(self) -> f64 {
         self.log_wrapper(|n| {
+            #[cfg(target_os = "android")]
+            return ::sys::android::log2f64(n);
+            #[cfg(not(target_os = "android"))]
             return unsafe { intrinsics::log2f64(n) };
         })
     }
@@ -557,6 +568,7 @@ impl f64 {
     ///
     /// assert!(abs_difference < 1e-10);
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn log10(self) -> f64 {
         self.log_wrapper(|n| { unsafe { intrinsics::log10f64(n) } })
@@ -573,10 +585,9 @@ impl f64 {
     ///
     /// assert!(abs_difference < 1e-10);
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn to_degrees(self) -> f64 {
-        num::Float::to_degrees(self)
-    }
+    pub fn to_degrees(self) -> f64 { num::Float::to_degrees(self) }
 
     /// Converts degrees to radians.
     ///
@@ -589,10 +600,9 @@ impl f64 {
     ///
     /// assert!(abs_difference < 1e-10);
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn to_radians(self) -> f64 {
-        num::Float::to_radians(self)
-    }
+    pub fn to_radians(self) -> f64 { num::Float::to_radians(self) }
 
     /// Constructs a floating point number of `x*2^exp`.
     ///
@@ -604,6 +614,12 @@ impl f64 {
     ///
     /// assert!(abs_difference < 1e-10);
     /// ```
+    #[unstable(feature = "float_extras",
+               reason = "pending integer conventions",
+               issue = "27752")]
+    #[rustc_deprecated(since = "1.11.0",
+                       reason = "never really came to fruition and easily \
+                                 implementable outside the standard library")]
     #[inline]
     pub fn ldexp(x: f64, exp: isize) -> f64 {
         unsafe { cmath::ldexp(x, exp as c_int) }
@@ -628,6 +644,12 @@ impl f64 {
     /// assert!(abs_difference_0 < 1e-10);
     /// assert!(abs_difference_1 < 1e-10);
     /// ```
+    #[unstable(feature = "float_extras",
+               reason = "pending integer conventions",
+               issue = "27752")]
+    #[rustc_deprecated(since = "1.11.0",
+                       reason = "never really came to fruition and easily \
+                                 implementable outside the standard library")]
     #[inline]
     pub fn frexp(self) -> (f64, isize) {
         unsafe {
@@ -649,6 +671,12 @@ impl f64 {
     ///
     /// assert!(abs_diff < 1e-10);
     /// ```
+    #[unstable(feature = "float_extras",
+               reason = "unsure about its place in the world",
+               issue = "27752")]
+    #[rustc_deprecated(since = "1.11.0",
+                       reason = "never really came to fruition and easily \
+                                 implementable outside the standard library")]
     #[inline]
     pub fn next_after(self, other: f64) -> f64 {
         unsafe { cmath::nextafter(self, other) }
@@ -664,6 +692,7 @@ impl f64 {
     /// ```
     ///
     /// If one of the arguments is NaN, then the other argument is returned.
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn max(self, other: f64) -> f64 {
         unsafe { cmath::fmax(self, other) }
@@ -679,6 +708,7 @@ impl f64 {
     /// ```
     ///
     /// If one of the arguments is NaN, then the other argument is returned.
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn min(self, other: f64) -> f64 {
         unsafe { cmath::fmin(self, other) }
@@ -699,10 +729,18 @@ impl f64 {
     /// assert!(abs_difference_x < 1e-10);
     /// assert!(abs_difference_y < 1e-10);
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn abs_sub(self, other: f64) -> f64 {
-        unsafe { cmath::fdim(self, other) }
-    }
+    #[rustc_deprecated(since = "1.10.0",
+                       reason = "you probably meant `(self - other).abs()`: \
+                                 this operation is `(self - other).max(0.0)` (also \
+                                 known as `fdim` in C). If you truly need the positive \
+                                 difference, consider using that expression or the C function \
+                                 `fdim`, depending on how you wish to handle NaN (please consider \
+                                 filing an issue describing your use-case too).")]
+     pub fn abs_sub(self, other: f64) -> f64 {
+         unsafe { cmath::fdim(self, other) }
+     }
 
     /// Takes the cubic root of a number.
     ///
@@ -714,6 +752,7 @@ impl f64 {
     ///
     /// assert!(abs_difference < 1e-10);
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn cbrt(self) -> f64 {
         unsafe { cmath::cbrt(self) }
@@ -731,6 +770,7 @@ impl f64 {
     ///
     /// assert!(abs_difference < 1e-10);
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn hypot(self, other: f64) -> f64 {
         unsafe { cmath::hypot(self, other) }
@@ -747,6 +787,7 @@ impl f64 {
     ///
     /// assert!(abs_difference < 1e-10);
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn sin(self) -> f64 {
         unsafe { intrinsics::sinf64(self) }
@@ -763,6 +804,7 @@ impl f64 {
     ///
     /// assert!(abs_difference < 1e-10);
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn cos(self) -> f64 {
         unsafe { intrinsics::cosf64(self) }
@@ -778,6 +820,7 @@ impl f64 {
     ///
     /// assert!(abs_difference < 1e-14);
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn tan(self) -> f64 {
         unsafe { cmath::tan(self) }
@@ -797,6 +840,7 @@ impl f64 {
     ///
     /// assert!(abs_difference < 1e-10);
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn asin(self) -> f64 {
         unsafe { cmath::asin(self) }
@@ -816,6 +860,7 @@ impl f64 {
     ///
     /// assert!(abs_difference < 1e-10);
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn acos(self) -> f64 {
         unsafe { cmath::acos(self) }
@@ -832,6 +877,7 @@ impl f64 {
     ///
     /// assert!(abs_difference < 1e-10);
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn atan(self) -> f64 {
         unsafe { cmath::atan(self) }
@@ -863,6 +909,7 @@ impl f64 {
     /// assert!(abs_difference_1 < 1e-10);
     /// assert!(abs_difference_2 < 1e-10);
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn atan2(self, other: f64) -> f64 {
         unsafe { cmath::atan2(self, other) }
@@ -883,6 +930,7 @@ impl f64 {
     /// assert!(abs_difference_0 < 1e-10);
     /// assert!(abs_difference_1 < 1e-10);
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn sin_cos(self) -> (f64, f64) {
         (self.sin(), self.cos())
@@ -899,6 +947,7 @@ impl f64 {
     ///
     /// assert!(abs_difference < 1e-10);
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn exp_m1(self) -> f64 {
         unsafe { cmath::expm1(self) }
@@ -917,6 +966,7 @@ impl f64 {
     ///
     /// assert!(abs_difference < 1e-10);
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn ln_1p(self) -> f64 {
         unsafe { cmath::log1p(self) }
@@ -937,6 +987,7 @@ impl f64 {
     ///
     /// assert!(abs_difference < 1e-10);
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn sinh(self) -> f64 {
         unsafe { cmath::sinh(self) }
@@ -957,6 +1008,7 @@ impl f64 {
     /// // Same result
     /// assert!(abs_difference < 1.0e-10);
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn cosh(self) -> f64 {
         unsafe { cmath::cosh(self) }
@@ -977,6 +1029,7 @@ impl f64 {
     ///
     /// assert!(abs_difference < 1.0e-10);
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn tanh(self) -> f64 {
         unsafe { cmath::tanh(self) }
@@ -992,6 +1045,7 @@ impl f64 {
     ///
     /// assert!(abs_difference < 1.0e-10);
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn asinh(self) -> f64 {
         if self == NEG_INFINITY {
@@ -1011,6 +1065,7 @@ impl f64 {
     ///
     /// assert!(abs_difference < 1.0e-10);
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn acosh(self) -> f64 {
         match self {
@@ -1031,6 +1086,7 @@ impl f64 {
     ///
     /// assert!(abs_difference < 1.0e-10);
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn atanh(self) -> f64 {
         0.5 * ((2.0 * self) / (1.0 - self)).ln_1p()
@@ -1236,10 +1292,8 @@ mod tests {
     #[test]
     #[allow(deprecated)]
     fn test_integer_decode() {
-        assert_eq!(3.14159265359f64.integer_decode(),
-                   (7074237752028906, -51, 1));
-        assert_eq!((-8573.5918555f64).integer_decode(),
-                   (4713381968463931, -39, -1));
+        assert_eq!(3.14159265359f64.integer_decode(), (7074237752028906, -51, 1));
+        assert_eq!((-8573.5918555f64).integer_decode(), (4713381968463931, -39, -1));
         assert_eq!(2f64.powf(100.0).integer_decode(), (4503599627370496, 48, 1));
         assert_eq!(0f64.integer_decode(), (0, -1075, 1));
         assert_eq!((-0f64).integer_decode(), (0, -1075, -1));
@@ -1330,7 +1384,7 @@ mod tests {
         assert_eq!((-0f64).abs(), 0f64);
         assert_eq!((-1f64).abs(), 1f64);
         assert_eq!(NEG_INFINITY.abs(), INFINITY);
-        assert_eq!((1f64 / NEG_INFINITY).abs(), 0f64);
+        assert_eq!((1f64/NEG_INFINITY).abs(), 0f64);
         assert!(NAN.abs().is_nan());
     }
 
@@ -1342,7 +1396,7 @@ mod tests {
         assert_eq!((-0f64).signum(), -1f64);
         assert_eq!((-1f64).signum(), -1f64);
         assert_eq!(NEG_INFINITY.signum(), -1f64);
-        assert_eq!((1f64 / NEG_INFINITY).signum(), -1f64);
+        assert_eq!((1f64/NEG_INFINITY).signum(), -1f64);
         assert!(NAN.signum().is_nan());
     }
 
@@ -1354,7 +1408,7 @@ mod tests {
         assert!(!(-0f64).is_sign_positive());
         assert!(!(-1f64).is_sign_positive());
         assert!(!NEG_INFINITY.is_sign_positive());
-        assert!(!(1f64 / NEG_INFINITY).is_sign_positive());
+        assert!(!(1f64/NEG_INFINITY).is_sign_positive());
         assert!(!NAN.is_sign_positive());
     }
 
@@ -1366,7 +1420,7 @@ mod tests {
         assert!((-0f64).is_sign_negative());
         assert!((-1f64).is_sign_negative());
         assert!(NEG_INFINITY.is_sign_negative());
-        assert!((1f64 / NEG_INFINITY).is_sign_negative());
+        assert!((1f64/NEG_INFINITY).is_sign_negative());
         assert!(!NAN.is_sign_negative());
     }
 
@@ -1604,25 +1658,15 @@ mod tests {
         assert_eq!((-0f64).frexp(), (-0f64, 0));
     }
 
-    #[test]
-    #[cfg_attr(windows, ignore)]
-    // FIXME #8755
+    #[test] #[cfg_attr(windows, ignore)] // FIXME #8755
     #[allow(deprecated)]
     fn test_frexp_nowin() {
         let inf: f64 = INFINITY;
         let neg_inf: f64 = NEG_INFINITY;
         let nan: f64 = NAN;
-        assert_eq!(match inf.frexp() {
-                       (x, _) => x,
-                   },
-                   inf);
-        assert_eq!(match neg_inf.frexp() {
-                       (x, _) => x,
-                   },
-                   neg_inf);
-        assert!(match nan.frexp() {
-            (x, _) => x.is_nan(),
-        })
+        assert_eq!(match inf.frexp() { (x, _) => x }, inf);
+        assert_eq!(match neg_inf.frexp() { (x, _) => x }, neg_inf);
+        assert!(match nan.frexp() { (x, _) => x.is_nan() })
     }
 
     #[test]

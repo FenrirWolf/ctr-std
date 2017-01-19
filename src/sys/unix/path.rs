@@ -8,17 +8,22 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! The I/O Prelude
-//!
-//! The purpose of this module is to alleviate imports of many common I/O traits
-//! by adding a glob import to the top of I/O heavy modules:
-//!
-//! ```
-//! # #![allow(unused_imports)]
-//! use std::io::prelude::*;
-//! ```
+use path::Prefix;
+use ffi::OsStr;
 
-#![stable(feature = "rust1", since = "1.0.0")]
+#[inline]
+pub fn is_sep_byte(b: u8) -> bool {
+    b == b'/'
+}
 
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use super::{Read, Write, BufRead, Seek};
+#[inline]
+pub fn is_verbatim_sep(b: u8) -> bool {
+    b == b'/'
+}
+
+pub fn parse_prefix(_: &OsStr) -> Option<Prefix> {
+    None
+}
+
+pub const MAIN_SEP_STR: &'static str = "/";
+pub const MAIN_SEP: char = '/';

@@ -97,21 +97,23 @@
 //! normalization is possible to build on top of the components APIs,
 //! and will be included in this library in the near future.
 
+#![stable(feature = "rust1", since = "1.0.0")]
+
 use ascii::*;
-use borrow::{Borrow, ToOwned, Cow};
+use borrow::{Borrow, Cow};
 use cmp;
-//use error::Error;
+use error::Error;
 use fmt;
-//use fs;
+use fs;
 use hash::{Hash, Hasher};
-//use io;
+use io;
+use iter::{self, FusedIterator};
 use mem;
 use ops::{self, Deref};
-use iter;
 
 use ffi::{OsStr, OsString};
 
-use self::platform::{is_sep_byte, is_verbatim_sep, MAIN_SEP_STR, parse_prefix};
+use sys::path::{is_sep_byte, is_verbatim_sep, MAIN_SEP_STR, parse_prefix};
 
 ////////////////////////////////////////////////////////////////////////////////
 // GENERAL NOTES
@@ -122,35 +124,6 @@ use self::platform::{is_sep_byte, is_verbatim_sep, MAIN_SEP_STR, parse_prefix};
 // as-is.  Eventually, this transmutation should be replaced by direct uses of
 // OsStr APIs for parsing, but it will take a while for those to become
 // available.
-
-////////////////////////////////////////////////////////////////////////////////
-// Platform-specific definitions
-////////////////////////////////////////////////////////////////////////////////
-
-// The following modules give the most basic tools for parsing paths on various
-// platforms. The bulk of the code is devoted to parsing prefixes on Windows.
-
-mod platform {
-    use super::Prefix;
-    use ffi::OsStr;
-
-    #[inline]
-    pub fn is_sep_byte(b: u8) -> bool {
-        b == b'/'
-    }
-
-    #[inline]
-    pub fn is_verbatim_sep(b: u8) -> bool {
-        b == b'/'
-    }
-
-    pub fn parse_prefix(_: &OsStr) -> Option<Prefix> {
-        None
-    }
-
-    pub const MAIN_SEP_STR: &'static str = "/";
-    pub const MAIN_SEP: char = '/';
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 // Windows Prefixes
@@ -164,29 +137,37 @@ mod platform {
 /// `/` is *not* treated as a separator and essentially no normalization is
 /// performed.
 #[derive(Copy, Clone, Debug, Hash, PartialOrd, Ord, PartialEq, Eq)]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub enum Prefix<'a> {
     /// Prefix `\\?\`, together with the given component immediately following it.
-    Verbatim(&'a OsStr),
+    #[stable(feature = "rust1", since = "1.0.0")]
+    Verbatim(#[stable(feature = "rust1", since = "1.0.0")] &'a OsStr),
+
     /// Prefix `\\?\UNC\`, with the "server" and "share" components following it.
+    #[stable(feature = "rust1", since = "1.0.0")]
     VerbatimUNC(
-        &'a OsStr,
-        &'a OsStr,
+        #[stable(feature = "rust1", since = "1.0.0")] &'a OsStr,
+        #[stable(feature = "rust1", since = "1.0.0")] &'a OsStr,
     ),
 
     /// Prefix like `\\?\C:\`, for the given drive letter
-    VerbatimDisk(u8),
+    #[stable(feature = "rust1", since = "1.0.0")]
+    VerbatimDisk(#[stable(feature = "rust1", since = "1.0.0")] u8),
 
     /// Prefix `\\.\`, together with the given component immediately following it.
-    DeviceNS(&'a OsStr),
+    #[stable(feature = "rust1", since = "1.0.0")]
+    DeviceNS(#[stable(feature = "rust1", since = "1.0.0")] &'a OsStr),
 
     /// Prefix `\\server\share`, with the given "server" and "share" components.
+    #[stable(feature = "rust1", since = "1.0.0")]
     UNC(
-        &'a OsStr,
-        &'a OsStr,
+        #[stable(feature = "rust1", since = "1.0.0")] &'a OsStr,
+        #[stable(feature = "rust1", since = "1.0.0")] &'a OsStr,
     ),
 
     /// Prefix `C:` for the given disk drive.
-    Disk(u8),
+    #[stable(feature = "rust1", since = "1.0.0")]
+    Disk(#[stable(feature = "rust1", since = "1.0.0")] u8),
 }
 
 impl<'a> Prefix<'a> {
@@ -223,10 +204,11 @@ impl<'a> Prefix<'a> {
 
     /// Determines if the prefix is verbatim, i.e. begins with `\\?\`.
     #[inline]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn is_verbatim(&self) -> bool {
         use self::Prefix::*;
         match *self {
-            Verbatim(_) | VerbatimDisk(_) | VerbatimUNC(_, _) => true,
+            Verbatim(_) | VerbatimDisk(_) | VerbatimUNC(..) => true,
             _ => false,
         }
     }
@@ -260,12 +242,14 @@ impl<'a> Prefix<'a> {
 /// assert!(path::is_separator('/'));
 /// assert!(!path::is_separator('❤'));
 /// ```
+#[stable(feature = "rust1", since = "1.0.0")]
 pub fn is_separator(c: char) -> bool {
     c.is_ascii() && is_sep_byte(c as u8)
 }
 
 /// The primary separator for the current platform
-pub const MAIN_SEPARATOR: char = platform::MAIN_SEP;
+#[stable(feature = "rust1", since = "1.0.0")]
+pub const MAIN_SEPARATOR: char = ::sys::path::MAIN_SEP;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Misc helpers
@@ -359,6 +343,7 @@ enum State {
 /// A Windows path prefix, e.g. `C:` or `\\server\share`.
 ///
 /// Does not occur on Unix.
+#[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Copy, Clone, Eq, Debug)]
 pub struct PrefixComponent<'a> {
     /// The prefix as an unparsed `OsStr` slice.
@@ -370,34 +355,40 @@ pub struct PrefixComponent<'a> {
 
 impl<'a> PrefixComponent<'a> {
     /// The parsed prefix data.
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn kind(&self) -> Prefix<'a> {
         self.parsed
     }
 
     /// The raw `OsStr` slice for this prefix.
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn as_os_str(&self) -> &'a OsStr {
         self.raw
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> cmp::PartialEq for PrefixComponent<'a> {
     fn eq(&self, other: &PrefixComponent<'a>) -> bool {
         cmp::PartialEq::eq(&self.parsed, &other.parsed)
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> cmp::PartialOrd for PrefixComponent<'a> {
     fn partial_cmp(&self, other: &PrefixComponent<'a>) -> Option<cmp::Ordering> {
         cmp::PartialOrd::partial_cmp(&self.parsed, &other.parsed)
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> cmp::Ord for PrefixComponent<'a> {
     fn cmp(&self, other: &PrefixComponent<'a>) -> cmp::Ordering {
         cmp::Ord::cmp(&self.parsed, &other.parsed)
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> Hash for PrefixComponent<'a> {
     fn hash<H: Hasher>(&self, h: &mut H) {
         self.parsed.hash(h);
@@ -429,29 +420,36 @@ impl<'a> Hash for PrefixComponent<'a> {
 ///
 /// [`path::Components`]: struct.Components.html
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub enum Component<'a> {
     /// A Windows path prefix, e.g. `C:` or `\\server\share`.
     ///
     /// Does not occur on Unix.
+    #[stable(feature = "rust1", since = "1.0.0")]
     Prefix(
-        PrefixComponent<'a>
+        #[stable(feature = "rust1", since = "1.0.0")] PrefixComponent<'a>
     ),
 
     /// The root directory component, appears after any prefix and before anything else
+    #[stable(feature = "rust1", since = "1.0.0")]
     RootDir,
 
     /// A reference to the current directory, i.e. `.`
+    #[stable(feature = "rust1", since = "1.0.0")]
     CurDir,
 
     /// A reference to the parent directory, i.e. `..`
+    #[stable(feature = "rust1", since = "1.0.0")]
     ParentDir,
 
     /// A normal component, i.e. `a` and `b` in `a/b`
-    Normal(&'a OsStr),
+    #[stable(feature = "rust1", since = "1.0.0")]
+    Normal(#[stable(feature = "rust1", since = "1.0.0")] &'a OsStr),
 }
 
 impl<'a> Component<'a> {
     /// Extracts the underlying `OsStr` slice
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn as_os_str(self) -> &'a OsStr {
         match self {
             Component::Prefix(p) => p.as_os_str(),
@@ -463,6 +461,7 @@ impl<'a> Component<'a> {
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> AsRef<OsStr> for Component<'a> {
     fn as_ref(&self) -> &OsStr {
         self.as_os_str()
@@ -490,6 +489,7 @@ impl<'a> AsRef<OsStr> for Component<'a> {
 ///
 /// [`path::Path::components`]: struct.Path.html#method.components
 #[derive(Clone)]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct Components<'a> {
     // The path left to parse components from
     path: &'a [u8],
@@ -510,8 +510,28 @@ pub struct Components<'a> {
 
 /// An iterator over the components of a path, as `OsStr` slices.
 #[derive(Clone)]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct Iter<'a> {
     inner: Components<'a>,
+}
+
+#[stable(feature = "path_components_debug", since = "1.13.0")]
+impl<'a> fmt::Debug for Components<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        struct DebugHelper<'a>(&'a Path);
+
+        impl<'a> fmt::Debug for DebugHelper<'a> {
+            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                f.debug_list()
+                    .entries(self.0.components())
+                    .finish()
+            }
+        }
+
+        f.debug_tuple("Components")
+            .field(&DebugHelper(self.as_path()))
+            .finish()
+    }
 }
 
 impl<'a> Components<'a> {
@@ -580,6 +600,7 @@ impl<'a> Components<'a> {
     ///
     /// assert_eq!(Path::new("foo/bar.txt"), components.as_path());
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn as_path(&self) -> &'a Path {
         let mut comps = self.clone();
         if comps.front == State::Body {
@@ -678,37 +699,62 @@ impl<'a> Components<'a> {
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> AsRef<Path> for Components<'a> {
     fn as_ref(&self) -> &Path {
         self.as_path()
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> AsRef<OsStr> for Components<'a> {
     fn as_ref(&self) -> &OsStr {
         self.as_path().as_os_str()
     }
 }
 
+#[stable(feature = "path_iter_debug", since = "1.13.0")]
+impl<'a> fmt::Debug for Iter<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        struct DebugHelper<'a>(&'a Path);
+
+        impl<'a> fmt::Debug for DebugHelper<'a> {
+            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                f.debug_list()
+                    .entries(self.0.iter())
+                    .finish()
+            }
+        }
+
+        f.debug_tuple("Iter")
+            .field(&DebugHelper(self.as_path()))
+            .finish()
+    }
+}
+
 impl<'a> Iter<'a> {
     /// Extracts a slice corresponding to the portion of the path remaining for iteration.
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn as_path(&self) -> &'a Path {
         self.inner.as_path()
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> AsRef<Path> for Iter<'a> {
     fn as_ref(&self) -> &Path {
         self.as_path()
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> AsRef<OsStr> for Iter<'a> {
     fn as_ref(&self) -> &OsStr {
         self.as_path().as_os_str()
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> Iterator for Iter<'a> {
     type Item = &'a OsStr;
 
@@ -717,12 +763,17 @@ impl<'a> Iterator for Iter<'a> {
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> DoubleEndedIterator for Iter<'a> {
     fn next_back(&mut self) -> Option<&'a OsStr> {
         self.inner.next_back().map(Component::as_os_str)
     }
 }
 
+#[unstable(feature = "fused", issue = "35602")]
+impl<'a> FusedIterator for Iter<'a> {}
+
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> Iterator for Components<'a> {
     type Item = Component<'a>;
 
@@ -775,6 +826,7 @@ impl<'a> Iterator for Components<'a> {
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> DoubleEndedIterator for Components<'a> {
     fn next_back(&mut self) -> Option<Component<'a>> {
         while !self.finished() {
@@ -821,20 +873,27 @@ impl<'a> DoubleEndedIterator for Components<'a> {
     }
 }
 
+#[unstable(feature = "fused", issue = "35602")]
+impl<'a> FusedIterator for Components<'a> {}
+
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> cmp::PartialEq for Components<'a> {
     fn eq(&self, other: &Components<'a>) -> bool {
         Iterator::eq(self.clone(), other.clone())
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> cmp::Eq for Components<'a> {}
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> cmp::PartialOrd for Components<'a> {
     fn partial_cmp(&self, other: &Components<'a>) -> Option<cmp::Ordering> {
         Iterator::partial_cmp(self.clone(), other.clone())
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> cmp::Ord for Components<'a> {
     fn cmp(&self, other: &Components<'a>) -> cmp::Ordering {
         Iterator::cmp(self.clone(), other.clone())
@@ -845,11 +904,17 @@ impl<'a> cmp::Ord for Components<'a> {
 // Basic types and traits
 ////////////////////////////////////////////////////////////////////////////////
 
-/// An owned, mutable path (akin to `String`).
+/// An owned, mutable path (akin to [`String`]).
 ///
-/// This type provides methods like `push` and `set_extension` that mutate the
-/// path in place. It also implements `Deref` to `Path`, meaning that all
-/// methods on `Path` slices are available on `PathBuf` values as well.
+/// This type provides methods like [`push`] and [`set_extension`] that mutate
+/// the path in place. It also implements [`Deref`] to [`Path`], meaning that
+/// all methods on [`Path`] slices are available on `PathBuf` values as well.
+///
+/// [`String`]: ../string/struct.String.html
+/// [`Path`]: struct.Path.html
+/// [`push`]: struct.PathBuf.html#method.push
+/// [`set_extension`]: struct.PathBuf.html#method.set_extension
+/// [`Deref`]: ../ops/trait.Deref.html
 ///
 /// More details about the overall approach can be found in
 /// the module documentation.
@@ -865,6 +930,7 @@ impl<'a> cmp::Ord for Components<'a> {
 /// path.set_extension("dll");
 /// ```
 #[derive(Clone)]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct PathBuf {
     inner: OsString,
 }
@@ -875,11 +941,32 @@ impl PathBuf {
     }
 
     /// Allocates an empty `PathBuf`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::path::PathBuf;
+    ///
+    /// let path = PathBuf::new();
+    /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new() -> PathBuf {
         PathBuf { inner: OsString::new() }
     }
 
-    /// Coerces to a `Path` slice.
+    /// Coerces to a [`Path`] slice.
+    ///
+    /// [`Path`]: struct.Path.html
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::path::{Path, PathBuf};
+    ///
+    /// let p = PathBuf::from("/test");
+    /// assert_eq!(Path::new("/test"), p.as_path());
+    /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn as_path(&self) -> &Path {
         self
     }
@@ -908,6 +995,7 @@ impl PathBuf {
     /// path.push("/etc/passwd");
     /// assert_eq!(path, PathBuf::from("/etc/passwd"));
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn push<P: AsRef<Path>>(&mut self, path: P) {
         self._push(path.as_ref())
     }
@@ -942,10 +1030,27 @@ impl PathBuf {
         self.inner.push(path);
     }
 
-    /// Truncate `self` to `self.parent()`.
+    /// Truncate `self` to [`self.parent()`].
     ///
-    /// Returns false and does nothing if `self.file_name()` is `None`.
+    /// Returns false and does nothing if [`self.file_name()`] is `None`.
     /// Otherwise, returns `true`.
+    ///
+    /// [`self.parent()`]: struct.PathBuf.html#method.parent
+    /// [`self.file_name()`]: struct.PathBuf.html#method.file_name
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::path::{Path, PathBuf};
+    ///
+    /// let mut p = PathBuf::from("/test/test.rs");
+    ///
+    /// p.pop();
+    /// assert_eq!(Path::new("/test"), p);
+    /// p.pop();
+    /// assert_eq!(Path::new("/"), p);
+    /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn pop(&mut self) -> bool {
         match self.parent().map(|p| p.as_u8_slice().len()) {
             Some(len) => {
@@ -956,10 +1061,12 @@ impl PathBuf {
         }
     }
 
-    /// Updates `self.file_name()` to `file_name`.
+    /// Updates [`self.file_name()`] to `file_name`.
     ///
-    /// If `self.file_name()` was `None`, this is equivalent to pushing
+    /// If [`self.file_name()`] was `None`, this is equivalent to pushing
     /// `file_name`.
+    ///
+    /// [`self.file_name()`]: struct.PathBuf.html#method.file_name
     ///
     /// # Examples
     ///
@@ -974,6 +1081,7 @@ impl PathBuf {
     /// buf.set_file_name("baz.txt");
     /// assert!(buf == PathBuf::from("/baz.txt"));
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn set_file_name<S: AsRef<OsStr>>(&mut self, file_name: S) {
         self._set_file_name(file_name.as_ref())
     }
@@ -986,12 +1094,30 @@ impl PathBuf {
         self.push(file_name);
     }
 
-    /// Updates `self.extension()` to `extension`.
+    /// Updates [`self.extension()`] to `extension`.
     ///
-    /// If `self.file_name()` is `None`, does nothing and returns `false`.
+    /// If [`self.file_name()`] is `None`, does nothing and returns `false`.
     ///
-    /// Otherwise, returns `true`; if `self.extension()` is `None`, the extension
-    /// is added; otherwise it is replaced.
+    /// Otherwise, returns `true`; if [`self.extension()`] is `None`, the
+    /// extension is added; otherwise it is replaced.
+    ///
+    /// [`self.file_name()`]: struct.PathBuf.html#method.file_name
+    /// [`self.extension()`]: struct.PathBuf.html#method.extension
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::path::{Path, PathBuf};
+    ///
+    /// let mut p = PathBuf::from("/feel/the");
+    ///
+    /// p.set_extension("force");
+    /// assert_eq!(Path::new("/feel/the.force"), p.as_path());
+    ///
+    /// p.set_extension("dark_side");
+    /// assert_eq!(Path::new("/feel/the.dark_side"), p.as_path());
+    /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn set_extension<S: AsRef<OsStr>>(&mut self, extension: S) -> bool {
         self._set_extension(extension.as_ref())
     }
@@ -1015,30 +1141,53 @@ impl PathBuf {
         true
     }
 
-    /// Consumes the `PathBuf`, yielding its internal `OsString` storage.
+    /// Consumes the `PathBuf`, yielding its internal [`OsString`] storage.
+    ///
+    /// [`OsString`]: ../ffi/struct.OsString.html
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::path::PathBuf;
+    ///
+    /// let p = PathBuf::from("/the/head");
+    /// let os_str = p.into_os_string();
+    /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn into_os_string(self) -> OsString {
         self.inner
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T: ?Sized + AsRef<OsStr>> From<&'a T> for PathBuf {
     fn from(s: &'a T) -> PathBuf {
         PathBuf::from(s.as_ref().to_os_string())
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl From<OsString> for PathBuf {
     fn from(s: OsString) -> PathBuf {
         PathBuf { inner: s }
     }
 }
 
+#[stable(feature = "from_path_buf_for_os_string", since = "1.14.0")]
+impl From<PathBuf> for OsString {
+    fn from(path_buf : PathBuf) -> OsString {
+        path_buf.inner
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
 impl From<String> for PathBuf {
     fn from(s: String) -> PathBuf {
         PathBuf::from(OsString::from(s))
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<P: AsRef<Path>> iter::FromIterator<P> for PathBuf {
     fn from_iter<I: IntoIterator<Item = P>>(iter: I) -> PathBuf {
         let mut buf = PathBuf::new();
@@ -1047,6 +1196,7 @@ impl<P: AsRef<Path>> iter::FromIterator<P> for PathBuf {
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<P: AsRef<Path>> iter::Extend<P> for PathBuf {
     fn extend<I: IntoIterator<Item = P>>(&mut self, iter: I) {
         for p in iter {
@@ -1055,12 +1205,14 @@ impl<P: AsRef<Path>> iter::Extend<P> for PathBuf {
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Debug for PathBuf {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         fmt::Debug::fmt(&**self, formatter)
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl ops::Deref for PathBuf {
     type Target = Path;
 
@@ -1069,12 +1221,14 @@ impl ops::Deref for PathBuf {
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl Borrow<Path> for PathBuf {
     fn borrow(&self) -> &Path {
         self.deref()
     }
 }
 
+#[stable(feature = "cow_from_path", since = "1.6.0")]
 impl<'a> From<&'a Path> for Cow<'a, Path> {
     #[inline]
     fn from(s: &'a Path) -> Cow<'a, Path> {
@@ -1082,6 +1236,7 @@ impl<'a> From<&'a Path> for Cow<'a, Path> {
     }
 }
 
+#[stable(feature = "cow_from_path", since = "1.6.0")]
 impl<'a> From<PathBuf> for Cow<'a, Path> {
     #[inline]
     fn from(s: PathBuf) -> Cow<'a, Path> {
@@ -1089,6 +1244,7 @@ impl<'a> From<PathBuf> for Cow<'a, Path> {
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl ToOwned for Path {
     type Owned = PathBuf;
     fn to_owned(&self) -> PathBuf {
@@ -1096,54 +1252,61 @@ impl ToOwned for Path {
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl cmp::PartialEq for PathBuf {
     fn eq(&self, other: &PathBuf) -> bool {
         self.components() == other.components()
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl Hash for PathBuf {
     fn hash<H: Hasher>(&self, h: &mut H) {
         self.as_path().hash(h)
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl cmp::Eq for PathBuf {}
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl cmp::PartialOrd for PathBuf {
     fn partial_cmp(&self, other: &PathBuf) -> Option<cmp::Ordering> {
         self.components().partial_cmp(other.components())
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl cmp::Ord for PathBuf {
     fn cmp(&self, other: &PathBuf) -> cmp::Ordering {
         self.components().cmp(other.components())
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl AsRef<OsStr> for PathBuf {
     fn as_ref(&self) -> &OsStr {
         &self.inner[..]
     }
 }
 
-impl Into<OsString> for PathBuf {
-    fn into(self) -> OsString {
-        self.inner
-    }
-}
-
-/// A slice of a path (akin to `str`).
+/// A slice of a path (akin to [`str`]).
 ///
 /// This type supports a number of operations for inspecting a path, including
 /// breaking the path into its components (separated by `/` or `\`, depending on
 /// the platform), extracting the file name, determining whether the path is
-/// absolute, and so on. More details about the overall approach can be found in
-/// the module documentation.
+/// absolute, and so on.
 ///
 /// This is an *unsized* type, meaning that it must always be used behind a
-/// pointer like `&` or `Box`.
+/// pointer like `&` or [`Box`]. For an owned version of this type,
+/// see [`PathBuf`].
+///
+/// [`str`]: ../primitive.str.html
+/// [`Box`]: ../boxed/struct.Box.html
+/// [`PathBuf`]: struct.PathBuf.html
+///
+/// More details about the overall approach can be found in
+/// the module documentation.
 ///
 /// # Examples
 ///
@@ -1156,6 +1319,7 @@ impl Into<OsString> for PathBuf {
 /// let parent_dir = path.parent();
 /// ```
 ///
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct Path {
     inner: OsStr,
 }
@@ -1163,6 +1327,7 @@ pub struct Path {
 /// An error returned from the `Path::strip_prefix` method indicating that the
 /// prefix was not found in `self`.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[stable(since = "1.7.0", feature = "strip_prefix")]
 pub struct StripPrefixError(());
 
 impl Path {
@@ -1198,11 +1363,14 @@ impl Path {
     /// let from_path = Path::new(&from_string);
     /// assert_eq!(from_string, from_path);
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new<S: AsRef<OsStr> + ?Sized>(s: &S) -> &Path {
         unsafe { mem::transmute(s.as_ref()) }
     }
 
-    /// Yields the underlying `OsStr` slice.
+    /// Yields the underlying [`OsStr`] slice.
+    ///
+    /// [`OsStr`]: ../ffi/struct.OsStr.html
     ///
     /// # Examples
     ///
@@ -1212,13 +1380,16 @@ impl Path {
     /// let os_str = Path::new("foo.txt").as_os_str();
     /// assert_eq!(os_str, std::ffi::OsStr::new("foo.txt"));
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn as_os_str(&self) -> &OsStr {
         &self.inner
     }
 
-    /// Yields a `&str` slice if the `Path` is valid unicode.
+    /// Yields a [`&str`] slice if the `Path` is valid unicode.
     ///
     /// This conversion may entail doing a check for UTF-8 validity.
+    ///
+    /// [`&str`]: ../primitive.str.html
     ///
     /// # Examples
     ///
@@ -1228,13 +1399,16 @@ impl Path {
     /// let path_str = Path::new("foo.txt").to_str();
     /// assert_eq!(path_str, Some("foo.txt"));
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn to_str(&self) -> Option<&str> {
         self.inner.to_str()
     }
 
-    /// Converts a `Path` to a `Cow<str>`.
+    /// Converts a `Path` to a [`Cow<str>`].
     ///
     /// Any non-Unicode sequences are replaced with U+FFFD REPLACEMENT CHARACTER.
+    ///
+    /// [`Cow<str>`]: ../borrow/enum.Cow.html
     ///
     /// # Examples
     ///
@@ -1244,11 +1418,14 @@ impl Path {
     /// let path_str = Path::new("foo.txt").to_string_lossy();
     /// assert_eq!(path_str, "foo.txt");
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn to_string_lossy(&self) -> Cow<str> {
         self.inner.to_string_lossy()
     }
 
-    /// Converts a `Path` to an owned `PathBuf`.
+    /// Converts a `Path` to an owned [`PathBuf`].
+    ///
+    /// [`PathBuf`]: struct.PathBuf.html
     ///
     /// # Examples
     ///
@@ -1258,6 +1435,7 @@ impl Path {
     /// let path_buf = Path::new("foo.txt").to_path_buf();
     /// assert_eq!(path_buf, std::path::PathBuf::from("foo.txt"));
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn to_path_buf(&self) -> PathBuf {
         PathBuf::from(self.inner.to_os_string())
     }
@@ -1277,6 +1455,7 @@ impl Path {
     ///
     /// assert!(!Path::new("foo.txt").is_absolute());
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[allow(deprecated)]
     pub fn is_absolute(&self) -> bool {
         self.has_root() && (cfg!(unix) || self.prefix().is_some())
@@ -1291,6 +1470,7 @@ impl Path {
     ///
     /// assert!(Path::new("foo.txt").is_relative());
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn is_relative(&self) -> bool {
         !self.is_absolute()
     }
@@ -1315,6 +1495,7 @@ impl Path {
     ///
     /// assert!(Path::new("/etc/passwd").has_root());
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn has_root(&self) -> bool {
         self.components().has_root()
     }
@@ -1336,6 +1517,7 @@ impl Path {
     /// assert_eq!(grand_parent, Path::new("/"));
     /// assert_eq!(grand_parent.parent(), None);
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn parent(&self) -> Option<&Path> {
         let mut comps = self.components();
         let comp = comps.next_back();
@@ -1375,6 +1557,7 @@ impl Path {
     /// assert_eq!(Some(OsStr::new("foo.txt")), Path::new("foo.txt/.//").file_name());
     /// assert_eq!(None, Path::new("foo.txt/..").file_name());
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn file_name(&self) -> Option<&OsStr> {
         self.components().next_back().and_then(|p| {
             match p {
@@ -1390,6 +1573,19 @@ impl Path {
     ///
     /// If `base` is not a prefix of `self` (i.e. `starts_with`
     /// returns `false`), returns `Err`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::path::Path;
+    ///
+    /// let path = Path::new("/test/haha/foo.txt");
+    ///
+    /// assert_eq!(path.strip_prefix("/test"), Ok(Path::new("haha/foo.txt")));
+    /// assert_eq!(path.strip_prefix("test").is_ok(), false);
+    /// assert_eq!(path.strip_prefix("/haha").is_ok(), false);
+    /// ```
+    #[stable(since = "1.7.0", feature = "path_strip_prefix")]
     pub fn strip_prefix<'a, P: ?Sized>(&'a self, base: &'a P)
                                        -> Result<&'a Path, StripPrefixError>
         where P: AsRef<Path>
@@ -1419,6 +1615,7 @@ impl Path {
     ///
     /// assert!(!path.starts_with("/e"));
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn starts_with<P: AsRef<Path>>(&self, base: P) -> bool {
         self._starts_with(base.as_ref())
     }
@@ -1440,6 +1637,7 @@ impl Path {
     ///
     /// assert!(path.ends_with("passwd"));
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn ends_with<P: AsRef<Path>>(&self, child: P) -> bool {
         self._ends_with(child.as_ref())
     }
@@ -1448,7 +1646,9 @@ impl Path {
         iter_after(self.components().rev(), child.components().rev()).is_some()
     }
 
-    /// Extracts the stem (non-extension) portion of `self.file_name()`.
+    /// Extracts the stem (non-extension) portion of [`self.file_name()`].
+    ///
+    /// [`self.file_name()`]: struct.Path.html#method.file_name
     ///
     /// The stem is:
     ///
@@ -1466,11 +1666,14 @@ impl Path {
     ///
     /// assert_eq!("foo", path.file_stem().unwrap());
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn file_stem(&self) -> Option<&OsStr> {
         self.file_name().map(split_file_at_dot).and_then(|(before, after)| before.or(after))
     }
 
-    /// Extracts the extension of `self.file_name()`, if possible.
+    /// Extracts the extension of [`self.file_name()`], if possible.
+    ///
+    /// [`self.file_name()`]: struct.Path.html#method.file_name
     ///
     /// The extension is:
     ///
@@ -1488,13 +1691,17 @@ impl Path {
     ///
     /// assert_eq!("rs", path.extension().unwrap());
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn extension(&self) -> Option<&OsStr> {
         self.file_name().map(split_file_at_dot).and_then(|(before, after)| before.and(after))
     }
 
-    /// Creates an owned `PathBuf` with `path` adjoined to `self`.
+    /// Creates an owned [`PathBuf`] with `path` adjoined to `self`.
     ///
-    /// See `PathBuf::push` for more details on what it means to adjoin a path.
+    /// See [`PathBuf::push`] for more details on what it means to adjoin a path.
+    ///
+    /// [`PathBuf`]: struct.PathBuf.html
+    /// [`PathBuf::push`]: struct.PathBuf.html#method.push
     ///
     /// # Examples
     ///
@@ -1503,6 +1710,7 @@ impl Path {
     ///
     /// assert_eq!(Path::new("/etc").join("passwd"), PathBuf::from("/etc/passwd"));
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn join<P: AsRef<Path>>(&self, path: P) -> PathBuf {
         self._join(path.as_ref())
     }
@@ -1513,9 +1721,12 @@ impl Path {
         buf
     }
 
-    /// Creates an owned `PathBuf` like `self` but with the given file name.
+    /// Creates an owned [`PathBuf`] like `self` but with the given file name.
     ///
-    /// See `PathBuf::set_file_name` for more details.
+    /// See [`PathBuf::set_file_name`] for more details.
+    ///
+    /// [`PathBuf`]: struct.PathBuf.html
+    /// [`PathBuf::set_file_name`]: struct.PathBuf.html#method.set_file_name
     ///
     /// # Examples
     ///
@@ -1525,6 +1736,7 @@ impl Path {
     /// let path = Path::new("/tmp/foo.txt");
     /// assert_eq!(path.with_file_name("bar.txt"), PathBuf::from("/tmp/bar.txt"));
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn with_file_name<S: AsRef<OsStr>>(&self, file_name: S) -> PathBuf {
         self._with_file_name(file_name.as_ref())
     }
@@ -1535,9 +1747,12 @@ impl Path {
         buf
     }
 
-    /// Creates an owned `PathBuf` like `self` but with the given extension.
+    /// Creates an owned [`PathBuf`] like `self` but with the given extension.
     ///
-    /// See `PathBuf::set_extension` for more details.
+    /// See [`PathBuf::set_extension`] for more details.
+    ///
+    /// [`PathBuf`]: struct.PathBuf.html
+    /// [`PathBuf::set_extension`]: struct.PathBuf.html#method.set_extension
     ///
     /// # Examples
     ///
@@ -1547,6 +1762,7 @@ impl Path {
     /// let path = Path::new("foo.rs");
     /// assert_eq!(path.with_extension("txt"), PathBuf::from("foo.txt"));
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn with_extension<S: AsRef<OsStr>>(&self, extension: S) -> PathBuf {
         self._with_extension(extension.as_ref())
     }
@@ -1572,6 +1788,7 @@ impl Path {
     /// assert_eq!(components.next(), Some(Component::Normal(OsStr::new("foo.txt"))));
     /// assert_eq!(components.next(), None)
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn components(&self) -> Components {
         let prefix = parse_prefix(self.as_os_str());
         Components {
@@ -1583,7 +1800,9 @@ impl Path {
         }
     }
 
-    /// Produce an iterator over the path's components viewed as `OsStr` slices.
+    /// Produce an iterator over the path's components viewed as [`OsStr`] slices.
+    ///
+    /// [`OsStr`]: ../ffi/struct.OsStr.html
     ///
     /// # Examples
     ///
@@ -1597,12 +1816,15 @@ impl Path {
     /// assert_eq!(it.next(), Some(OsStr::new("foo.txt")));
     /// assert_eq!(it.next(), None)
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn iter(&self) -> Iter {
         Iter { inner: self.components() }
     }
 
-    /// Returns an object that implements `Display` for safely printing paths
+    /// Returns an object that implements [`Display`] for safely printing paths
     /// that may contain non-Unicode data.
+    ///
+    /// [`Display`]: ../fmt/trait.Display.html
     ///
     /// # Examples
     ///
@@ -1613,16 +1835,12 @@ impl Path {
     ///
     /// println!("{}", path.display());
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn display(&self) -> Display {
         Display { path: self }
     }
 
 
-    //NOTE: The following functions rely on filesystem functionality that
-    //probably have to be implemented in ctru-rs instead of this library,
-    //and thus are commented out
-
-    /*
     /// Query the file system to get information about a file, directory, etc.
     ///
     /// This function will traverse symbolic links to query information about the
@@ -1631,6 +1849,7 @@ impl Path {
     /// This is an alias to [`fs::metadata`].
     ///
     /// [`fs::metadata`]: ../fs/fn.metadata.html
+    #[stable(feature = "path_ext", since = "1.5.0")]
     pub fn metadata(&self) -> io::Result<fs::Metadata> {
         fs::metadata(self)
     }
@@ -1640,11 +1859,10 @@ impl Path {
     /// This is an alias to [`fs::symlink_metadata`].
     ///
     /// [`fs::symlink_metadata`]: ../fs/fn.symlink_metadata.html
-
+    #[stable(feature = "path_ext", since = "1.5.0")]
     pub fn symlink_metadata(&self) -> io::Result<fs::Metadata> {
         fs::symlink_metadata(self)
     }
-
 
     /// Returns the canonical form of the path with all intermediate components
     /// normalized and symbolic links resolved.
@@ -1652,36 +1870,35 @@ impl Path {
     /// This is an alias to [`fs::canonicalize`].
     ///
     /// [`fs::canonicalize`]: ../fs/fn.canonicalize.html
-
+    #[stable(feature = "path_ext", since = "1.5.0")]
     pub fn canonicalize(&self) -> io::Result<PathBuf> {
         fs::canonicalize(self)
     }
-
 
     /// Reads a symbolic link, returning the file that the link points to.
     ///
     /// This is an alias to [`fs::read_link`].
     ///
     /// [`fs::read_link`]: ../fs/fn.read_link.html
-
+    #[stable(feature = "path_ext", since = "1.5.0")]
     pub fn read_link(&self) -> io::Result<PathBuf> {
         fs::read_link(self)
     }
 
-
     /// Returns an iterator over the entries within a directory.
     ///
-    /// The iterator will yield instances of `io::Result<DirEntry>`. New errors may
-    /// be encountered after an iterator is initially constructed.
+    /// The iterator will yield instances of [`io::Result`]`<`[`DirEntry`]`>`. New
+    /// errors may be encountered after an iterator is initially constructed.
     ///
     /// This is an alias to [`fs::read_dir`].
     ///
+    /// [`io::Result`]: ../io/type.Result.html
+    /// [`DirEntry`]: ../fs/struct.DirEntry.html
     /// [`fs::read_dir`]: ../fs/fn.read_dir.html
-
+    #[stable(feature = "path_ext", since = "1.5.0")]
     pub fn read_dir(&self) -> io::Result<fs::ReadDir> {
         fs::read_dir(self)
     }
-
 
     /// Returns whether the path points at an existing entity.
     ///
@@ -1694,11 +1911,10 @@ impl Path {
     /// use std::path::Path;
     /// assert_eq!(Path::new("does_not_exist.txt").exists(), false);
     /// ```
-
+    #[stable(feature = "path_ext", since = "1.5.0")]
     pub fn exists(&self) -> bool {
         fs::metadata(self).is_ok()
     }
-
 
     /// Returns whether the path is pointing at a regular file.
     ///
@@ -1712,11 +1928,10 @@ impl Path {
     /// assert_eq!(Path::new("./is_a_directory/").is_file(), false);
     /// assert_eq!(Path::new("a_file.txt").is_file(), true);
     /// ```
-
+    #[stable(feature = "path_ext", since = "1.5.0")]
     pub fn is_file(&self) -> bool {
         fs::metadata(self).map(|m| m.is_file()).unwrap_or(false)
     }
-
 
     /// Returns whether the path is pointing at a directory.
     ///
@@ -1730,19 +1945,20 @@ impl Path {
     /// assert_eq!(Path::new("./is_a_directory/").is_dir(), true);
     /// assert_eq!(Path::new("a_file.txt").is_dir(), false);
     /// ```
-
+    #[stable(feature = "path_ext", since = "1.5.0")]
     pub fn is_dir(&self) -> bool {
         fs::metadata(self).map(|m| m.is_dir()).unwrap_or(false)
     }
-    */
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl AsRef<OsStr> for Path {
     fn as_ref(&self) -> &OsStr {
         &self.inner
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Debug for Path {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         self.inner.fmt(formatter)
@@ -1750,28 +1966,33 @@ impl fmt::Debug for Path {
 }
 
 /// Helper struct for safely printing paths with `format!()` and `{}`
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct Display<'a> {
     path: &'a Path,
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> fmt::Debug for Display<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Debug::fmt(&self.path.to_string_lossy(), f)
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> fmt::Display for Display<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Display::fmt(&self.path.to_string_lossy(), f)
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl cmp::PartialEq for Path {
     fn eq(&self, other: &Path) -> bool {
         self.components().eq(other.components())
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl Hash for Path {
     fn hash<H: Hasher>(&self, h: &mut H) {
         for component in self.components() {
@@ -1780,68 +2001,80 @@ impl Hash for Path {
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl cmp::Eq for Path {}
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl cmp::PartialOrd for Path {
     fn partial_cmp(&self, other: &Path) -> Option<cmp::Ordering> {
         self.components().partial_cmp(other.components())
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl cmp::Ord for Path {
     fn cmp(&self, other: &Path) -> cmp::Ordering {
         self.components().cmp(other.components())
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl AsRef<Path> for Path {
     fn as_ref(&self) -> &Path {
         self
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl AsRef<Path> for OsStr {
     fn as_ref(&self) -> &Path {
         Path::new(self)
     }
 }
 
+#[stable(feature = "cow_os_str_as_ref_path", since = "1.8.0")]
 impl<'a> AsRef<Path> for Cow<'a, OsStr> {
     fn as_ref(&self) -> &Path {
         Path::new(self)
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl AsRef<Path> for OsString {
     fn as_ref(&self) -> &Path {
         Path::new(self)
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl AsRef<Path> for str {
     fn as_ref(&self) -> &Path {
         Path::new(self)
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl AsRef<Path> for String {
     fn as_ref(&self) -> &Path {
         Path::new(self)
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl AsRef<Path> for PathBuf {
     fn as_ref(&self) -> &Path {
         self
     }
 }
 
+#[stable(feature = "path_into_iter", since = "1.6.0")]
 impl<'a> IntoIterator for &'a PathBuf {
     type Item = &'a OsStr;
     type IntoIter = Iter<'a>;
     fn into_iter(self) -> Iter<'a> { self.iter() }
 }
 
+#[stable(feature = "path_into_iter", since = "1.6.0")]
 impl<'a> IntoIterator for &'a Path {
     type Item = &'a OsStr;
     type IntoIter = Iter<'a>;
@@ -1850,16 +2083,19 @@ impl<'a> IntoIterator for &'a Path {
 
 macro_rules! impl_cmp {
     ($lhs:ty, $rhs: ty) => {
+        #[stable(feature = "partialeq_path", since = "1.6.0")]
         impl<'a, 'b> PartialEq<$rhs> for $lhs {
             #[inline]
             fn eq(&self, other: &$rhs) -> bool { <Path as PartialEq>::eq(self, other) }
         }
 
+        #[stable(feature = "partialeq_path", since = "1.6.0")]
         impl<'a, 'b> PartialEq<$lhs> for $rhs {
             #[inline]
             fn eq(&self, other: &$lhs) -> bool { <Path as PartialEq>::eq(self, other) }
         }
 
+        #[stable(feature = "cmp_path", since = "1.8.0")]
         impl<'a, 'b> PartialOrd<$rhs> for $lhs {
             #[inline]
             fn partial_cmp(&self, other: &$rhs) -> Option<cmp::Ordering> {
@@ -1867,6 +2103,7 @@ macro_rules! impl_cmp {
             }
         }
 
+        #[stable(feature = "cmp_path", since = "1.8.0")]
         impl<'a, 'b> PartialOrd<$lhs> for $rhs {
             #[inline]
             fn partial_cmp(&self, other: &$lhs) -> Option<cmp::Ordering> {
@@ -1884,16 +2121,19 @@ impl_cmp!(Cow<'a, Path>, PathBuf);
 
 macro_rules! impl_cmp_os_str {
     ($lhs:ty, $rhs: ty) => {
+        #[stable(feature = "cmp_path", since = "1.8.0")]
         impl<'a, 'b> PartialEq<$rhs> for $lhs {
             #[inline]
             fn eq(&self, other: &$rhs) -> bool { <Path as PartialEq>::eq(self, other.as_ref()) }
         }
 
+        #[stable(feature = "cmp_path", since = "1.8.0")]
         impl<'a, 'b> PartialEq<$lhs> for $rhs {
             #[inline]
             fn eq(&self, other: &$lhs) -> bool { <Path as PartialEq>::eq(self.as_ref(), other) }
         }
 
+        #[stable(feature = "cmp_path", since = "1.8.0")]
         impl<'a, 'b> PartialOrd<$rhs> for $lhs {
             #[inline]
             fn partial_cmp(&self, other: &$rhs) -> Option<cmp::Ordering> {
@@ -1901,6 +2141,7 @@ macro_rules! impl_cmp_os_str {
             }
         }
 
+        #[stable(feature = "cmp_path", since = "1.8.0")]
         impl<'a, 'b> PartialOrd<$lhs> for $rhs {
             #[inline]
             fn partial_cmp(&self, other: &$lhs) -> Option<cmp::Ordering> {
@@ -1925,26 +2166,21 @@ impl_cmp_os_str!(Cow<'a, Path>, OsStr);
 impl_cmp_os_str!(Cow<'a, Path>, &'b OsStr);
 impl_cmp_os_str!(Cow<'a, Path>, OsString);
 
-/*
+#[stable(since = "1.7.0", feature = "strip_prefix")]
 impl fmt::Display for StripPrefixError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.description().fmt(f)
     }
 }
-*/
 
-/*
+#[stable(since = "1.7.0", feature = "strip_prefix")]
 impl Error for StripPrefixError {
     fn description(&self) -> &str { "prefix not found" }
 }
-*/
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use collections::string::{ToString, String};
-    use collections::borrow;
-    use collections::Vec;
 
     macro_rules! t(
         ($path:expr, iter: $iter:expr) => (
@@ -2031,7 +2267,7 @@ mod tests {
 
     #[test]
     fn into() {
-        use collections::borrow::Cow;
+        use borrow::Cow;
 
         let static_path = Path::new("/home/foo");
         let static_cow_path: Cow<'static, Path> = static_path.into();
@@ -3131,7 +3367,7 @@ mod tests {
 
     #[test]
     fn test_eq_recievers() {
-        use collections::borrow::Cow;
+        use borrow::Cow;
 
         let borrowed: &Path = Path::new("foo/bar");
         let mut owned: PathBuf = PathBuf::new();
@@ -3156,10 +3392,11 @@ mod tests {
 
     #[test]
     pub fn test_compare() {
-        use core::hash::{Hash, Hasher, SipHasher};
+        use hash::{Hash, Hasher};
+        use collections::hash_map::DefaultHasher;
 
         fn hash<T: Hash>(t: T) -> u64 {
-            let mut s = SipHasher::new_with_keys(0, 0);
+            let mut s = DefaultHasher::new();
             t.hash(&mut s);
             s.finish()
         }
@@ -3277,5 +3514,48 @@ mod tests {
                 relative_from: Some("")
                 );
         }
+    }
+
+    #[test]
+    fn test_components_debug() {
+        let path = Path::new("/tmp");
+
+        let mut components = path.components();
+
+        let expected = "Components([RootDir, Normal(\"tmp\")])";
+        let actual = format!("{:?}", components);
+        assert_eq!(expected, actual);
+
+        let _ = components.next().unwrap();
+        let expected = "Components([Normal(\"tmp\")])";
+        let actual = format!("{:?}", components);
+        assert_eq!(expected, actual);
+
+        let _ = components.next().unwrap();
+        let expected = "Components([])";
+        let actual = format!("{:?}", components);
+        assert_eq!(expected, actual);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn test_iter_debug() {
+        let path = Path::new("/tmp");
+
+        let mut iter = path.iter();
+
+        let expected = "Iter([\"/\", \"tmp\"])";
+        let actual = format!("{:?}", iter);
+        assert_eq!(expected, actual);
+
+        let _ = iter.next().unwrap();
+        let expected = "Iter([\"tmp\"])";
+        let actual = format!("{:?}", iter);
+        assert_eq!(expected, actual);
+
+        let _ = iter.next().unwrap();
+        let expected = "Iter([])";
+        let actual = format!("{:?}", iter);
+        assert_eq!(expected, actual);
     }
 }

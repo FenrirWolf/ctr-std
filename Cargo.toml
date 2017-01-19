@@ -9,8 +9,5 @@ version = "0.1.1"
 [dependencies.compiler_builtins]
 git = "https://github.com/rust-lang-nursery/compiler-builtins"
 
-[dependencies.ctru-sys]
-path = "../ctru-sys"
-
 [dependencies.spin]
 version = "0.4"

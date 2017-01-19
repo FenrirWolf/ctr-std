@@ -38,6 +38,8 @@
 //! [`Display`]: ../fmt/trait.Display.html
 //! [`cause`]: trait.Error.html#method.cause
 
+#![stable(feature = "rust1", since = "1.0.0")]
+
 // A note about crates and the facade:
 //
 // Originally, the `Error` trait was defined in libcore, and the impls
@@ -59,12 +61,17 @@ use str;
 use string;
 
 /// Base functionality for all errors in Rust.
+#[stable(feature = "rust1", since = "1.0.0")]
 pub trait Error: Debug + Display {
     /// A short description of the error.
     ///
-    /// The description should not contain newlines or sentence-ending
-    /// punctuation, to facilitate embedding in larger user-facing
-    /// strings.
+    /// The description should only be used for a simple message.
+    /// It should not contain newlines or sentence-ending punctuation,
+    /// to facilitate embedding in larger user-facing strings.
+    /// For showing formatted error messages with more information see
+    /// [`Display`].
+    ///
+    /// [`Display`]: ../fmt/trait.Display.html
     ///
     /// # Examples
     ///
@@ -78,6 +85,7 @@ pub trait Error: Debug + Display {
     ///     _ => println!("No error"),
     /// }
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn description(&self) -> &str;
 
     /// The lower-level cause of this error, if any.
@@ -138,27 +146,34 @@ pub trait Error: Debug + Display {
     ///     }
     /// }
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn cause(&self) -> Option<&Error> { None }
 
     /// Get the `TypeId` of `self`
     #[doc(hidden)]
+    #[unstable(feature = "error_type_id",
+               reason = "unclear whether to commit to this public implementation detail",
+               issue = "27745")]
     fn type_id(&self) -> TypeId where Self: 'static {
         TypeId::of::<Self>()
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, E: Error + 'a> From<E> for Box<Error + 'a> {
     fn from(err: E) -> Box<Error + 'a> {
         Box::new(err)
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, E: Error + Send + Sync + 'a> From<E> for Box<Error + Send + Sync + 'a> {
     fn from(err: E) -> Box<Error + Send + Sync + 'a> {
         Box::new(err)
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl From<String> for Box<Error + Send + Sync> {
     fn from(err: String) -> Box<Error + Send + Sync> {
         #[derive(Debug)]
@@ -178,6 +193,7 @@ impl From<String> for Box<Error + Send + Sync> {
     }
 }
 
+#[stable(feature = "string_box_error", since = "1.7.0")]
 impl From<String> for Box<Error> {
     fn from(str_err: String) -> Box<Error> {
         let err1: Box<Error + Send + Sync> = From::from(str_err);
@@ -186,70 +202,82 @@ impl From<String> for Box<Error> {
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, 'b> From<&'b str> for Box<Error + Send + Sync + 'a> {
     fn from(err: &'b str) -> Box<Error + Send + Sync + 'a> {
         From::from(String::from(err))
     }
 }
 
+#[stable(feature = "string_box_error", since = "1.7.0")]
 impl<'a> From<&'a str> for Box<Error> {
     fn from(err: &'a str) -> Box<Error> {
         From::from(String::from(err))
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl Error for str::ParseBoolError {
     fn description(&self) -> &str { "failed to parse bool" }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl Error for str::Utf8Error {
     fn description(&self) -> &str {
         "invalid utf-8: corrupt contents"
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl Error for num::ParseIntError {
     fn description(&self) -> &str {
         self.__description()
     }
 }
 
+#[unstable(feature = "try_from", issue = "33417")]
 impl Error for num::TryFromIntError {
     fn description(&self) -> &str {
         self.__description()
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl Error for num::ParseFloatError {
     fn description(&self) -> &str {
         self.__description()
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl Error for string::FromUtf8Error {
     fn description(&self) -> &str {
         "invalid utf-8"
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl Error for string::FromUtf16Error {
     fn description(&self) -> &str {
         "invalid utf-16"
     }
 }
 
+#[stable(feature = "str_parse_error2", since = "1.8.0")]
 impl Error for string::ParseError {
     fn description(&self) -> &str {
         match *self {}
     }
 }
 
+#[stable(feature = "decode_utf16", since = "1.9.0")]
 impl Error for char::DecodeUtf16Error {
     fn description(&self) -> &str {
         "unpaired surrogate found"
     }
 }
 
+#[stable(feature = "box_error", since = "1.7.0")]
 impl<T: Error> Error for Box<T> {
     fn description(&self) -> &str {
         Error::description(&**self)
@@ -260,24 +288,28 @@ impl<T: Error> Error for Box<T> {
     }
 }
 
+#[stable(feature = "fmt_error", since = "1.11.0")]
 impl Error for fmt::Error {
     fn description(&self) -> &str {
         "an error occurred when formatting an argument"
     }
 }
 
+#[stable(feature = "try_borrow", since = "1.13.0")]
 impl Error for cell::BorrowError {
     fn description(&self) -> &str {
         "already mutably borrowed"
     }
 }
 
+#[stable(feature = "try_borrow", since = "1.13.0")]
 impl Error for cell::BorrowMutError {
     fn description(&self) -> &str {
         "already borrowed"
     }
 }
 
+#[unstable(feature = "try_from", issue = "33417")]
 impl Error for char::CharTryFromError {
     fn description(&self) -> &str {
         "converted integer out of range for `char`"
@@ -287,6 +319,7 @@ impl Error for char::CharTryFromError {
 // copied from any.rs
 impl Error + 'static {
     /// Returns true if the boxed type is the same as `T`
+    #[stable(feature = "error_downcast", since = "1.3.0")]
     #[inline]
     pub fn is<T: Error + 'static>(&self) -> bool {
         // Get TypeId of the type this function is instantiated with
@@ -301,6 +334,7 @@ impl Error + 'static {
 
     /// Returns some reference to the boxed value if it is of type `T`, or
     /// `None` if it isn't.
+    #[stable(feature = "error_downcast", since = "1.3.0")]
     #[inline]
     pub fn downcast_ref<T: Error + 'static>(&self) -> Option<&T> {
         if self.is::<T>() {
@@ -314,6 +348,7 @@ impl Error + 'static {
 
     /// Returns some mutable reference to the boxed value if it is of type `T`, or
     /// `None` if it isn't.
+    #[stable(feature = "error_downcast", since = "1.3.0")]
     #[inline]
     pub fn downcast_mut<T: Error + 'static>(&mut self) -> Option<&mut T> {
         if self.is::<T>() {
@@ -328,18 +363,21 @@ impl Error + 'static {
 
 impl Error + 'static + Send {
     /// Forwards to the method defined on the type `Any`.
+    #[stable(feature = "error_downcast", since = "1.3.0")]
     #[inline]
     pub fn is<T: Error + 'static>(&self) -> bool {
         <Error + 'static>::is::<T>(self)
     }
 
     /// Forwards to the method defined on the type `Any`.
+    #[stable(feature = "error_downcast", since = "1.3.0")]
     #[inline]
     pub fn downcast_ref<T: Error + 'static>(&self) -> Option<&T> {
         <Error + 'static>::downcast_ref::<T>(self)
     }
 
     /// Forwards to the method defined on the type `Any`.
+    #[stable(feature = "error_downcast", since = "1.3.0")]
     #[inline]
     pub fn downcast_mut<T: Error + 'static>(&mut self) -> Option<&mut T> {
         <Error + 'static>::downcast_mut::<T>(self)
@@ -348,18 +386,21 @@ impl Error + 'static + Send {
 
 impl Error + 'static + Send + Sync {
     /// Forwards to the method defined on the type `Any`.
+    #[stable(feature = "error_downcast", since = "1.3.0")]
     #[inline]
     pub fn is<T: Error + 'static>(&self) -> bool {
         <Error + 'static>::is::<T>(self)
     }
 
     /// Forwards to the method defined on the type `Any`.
+    #[stable(feature = "error_downcast", since = "1.3.0")]
     #[inline]
     pub fn downcast_ref<T: Error + 'static>(&self) -> Option<&T> {
         <Error + 'static>::downcast_ref::<T>(self)
     }
 
     /// Forwards to the method defined on the type `Any`.
+    #[stable(feature = "error_downcast", since = "1.3.0")]
     #[inline]
     pub fn downcast_mut<T: Error + 'static>(&mut self) -> Option<&mut T> {
         <Error + 'static>::downcast_mut::<T>(self)
@@ -368,6 +409,7 @@ impl Error + 'static + Send + Sync {
 
 impl Error {
     #[inline]
+    #[stable(feature = "error_downcast", since = "1.3.0")]
     /// Attempt to downcast the box to a concrete type.
     pub fn downcast<T: Error + 'static>(self: Box<Self>) -> Result<Box<T>, Box<Error>> {
         if self.is::<T>() {
@@ -383,6 +425,7 @@ impl Error {
 
 impl Error + Send {
     #[inline]
+    #[stable(feature = "error_downcast", since = "1.3.0")]
     /// Attempt to downcast the box to a concrete type.
     pub fn downcast<T: Error + 'static>(self: Box<Self>)
                                         -> Result<Box<T>, Box<Error + Send>> {
@@ -396,6 +439,7 @@ impl Error + Send {
 
 impl Error + Send + Sync {
     #[inline]
+    #[stable(feature = "error_downcast", since = "1.3.0")]
     /// Attempt to downcast the box to a concrete type.
     pub fn downcast<T: Error + 'static>(self: Box<Self>)
                                         -> Result<Box<T>, Box<Self>> {
@@ -410,8 +454,7 @@ impl Error + Send + Sync {
 #[cfg(test)]
 mod tests {
     use super::Error;
-    use core::fmt;
-    use alloc::boxed::Box;
+    use fmt;
 
     #[derive(Debug, PartialEq)]
     struct A;

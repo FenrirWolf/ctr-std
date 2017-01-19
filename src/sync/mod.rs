@@ -15,9 +15,15 @@
 //! and/or blocking at all, but rather provide the necessary tools to build
 //! other types of concurrent primitives.
 
+#![stable(feature = "rust1", since = "1.0.0")]
+
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use alloc::arc::{Arc, Weak};
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use core::sync::atomic;
 
 // Easy cheat until we get proper locks based on libctru code
+#[stable(feature = "3ds", since = "1.0.0")]
 pub use spin::{Mutex, MutexGuard};
+#[stable(feature = "3ds", since = "1.0.0")]
 pub use spin::{RwLock, RwLockReadGuard, RwLockWriteGuard};

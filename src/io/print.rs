@@ -10,6 +10,7 @@ pub static STDOUT: Mutex<StdoutRaw> = Mutex::new(StdoutRaw(()));
 
 pub struct StdoutRaw(());
 
+#[stable(feature = "3ds", since = "1.0.0")]
 impl Write for StdoutRaw {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         unsafe {

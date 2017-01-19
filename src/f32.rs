@@ -12,6 +12,7 @@
 //!
 //! *[See also the `f32` primitive type](../primitive.f32.html).*
 
+#![stable(feature = "rust1", since = "1.0.0")]
 #![allow(missing_docs)]
 
 #[cfg(not(test))]
@@ -24,17 +25,22 @@ use libc::c_int;
 use num::FpCategory;
 
 
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use core::f32::{RADIX, MANTISSA_DIGITS, DIGITS, EPSILON};
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use core::f32::{MIN_EXP, MAX_EXP, MIN_10_EXP};
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use core::f32::{MAX_10_EXP, NAN, INFINITY, NEG_INFINITY};
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use core::f32::{MIN, MIN_POSITIVE, MAX};
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use core::f32::consts;
 
 #[allow(dead_code)]
 mod cmath {
     use libc::{c_float, c_int};
 
-    extern "C" {
+    extern {
         pub fn cbrtf(n: c_float) -> c_float;
         pub fn erff(n: c_float) -> c_float;
         pub fn erfcf(n: c_float) -> c_float;
@@ -59,7 +65,7 @@ mod cmath {
     // See the comments in the `floor` function for why MSVC is special
     // here.
     #[cfg(not(target_env = "msvc"))]
-    extern "C" {
+    extern {
         pub fn acosf(n: c_float) -> c_float;
         pub fn asinf(n: c_float) -> c_float;
         pub fn atan2f(a: c_float, b: c_float) -> c_float;
@@ -148,10 +154,9 @@ impl f32 {
     /// assert!(nan.is_nan());
     /// assert!(!f.is_nan());
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn is_nan(self) -> bool {
-        num::Float::is_nan(self)
-    }
+    pub fn is_nan(self) -> bool { num::Float::is_nan(self) }
 
     /// Returns `true` if this value is positive infinity or negative infinity and
     /// false otherwise.
@@ -170,10 +175,9 @@ impl f32 {
     /// assert!(inf.is_infinite());
     /// assert!(neg_inf.is_infinite());
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn is_infinite(self) -> bool {
-        num::Float::is_infinite(self)
-    }
+    pub fn is_infinite(self) -> bool { num::Float::is_infinite(self) }
 
     /// Returns `true` if this number is neither infinite nor `NaN`.
     ///
@@ -191,10 +195,9 @@ impl f32 {
     /// assert!(!inf.is_finite());
     /// assert!(!neg_inf.is_finite());
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn is_finite(self) -> bool {
-        num::Float::is_finite(self)
-    }
+    pub fn is_finite(self) -> bool { num::Float::is_finite(self) }
 
     /// Returns `true` if the number is neither zero, infinite,
     /// [subnormal][subnormal], or `NaN`.
@@ -217,10 +220,9 @@ impl f32 {
     /// assert!(!lower_than_min.is_normal());
     /// ```
     /// [subnormal]: https://en.wikipedia.org/wiki/Denormal_number
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn is_normal(self) -> bool {
-        num::Float::is_normal(self)
-    }
+    pub fn is_normal(self) -> bool { num::Float::is_normal(self) }
 
     /// Returns the floating point category of the number. If only one property
     /// is going to be tested, it is generally faster to use the specific
@@ -236,10 +238,9 @@ impl f32 {
     /// assert_eq!(num.classify(), FpCategory::Normal);
     /// assert_eq!(inf.classify(), FpCategory::Infinite);
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn classify(self) -> FpCategory {
-        num::Float::classify(self)
-    }
+    pub fn classify(self) -> FpCategory { num::Float::classify(self) }
 
     /// Returns the mantissa, base 2 exponent, and sign as integers, respectively.
     /// The original number can be recovered by `sign * mantissa * 2 ^ exponent`.
@@ -264,6 +265,11 @@ impl f32 {
     /// assert!(abs_difference <= f32::EPSILON);
     /// ```
     /// [floating-point]: ../reference.html#machine-types
+    #[unstable(feature = "float_extras", reason = "signature is undecided",
+               issue = "27752")]
+    #[rustc_deprecated(since = "1.11.0",
+                       reason = "never really came to fruition and easily \
+                                 implementable outside the standard library")]
     #[inline]
     #[allow(deprecated)]
     pub fn integer_decode(self) -> (u64, i16, i8) {
@@ -279,6 +285,7 @@ impl f32 {
     /// assert_eq!(f.floor(), 3.0);
     /// assert_eq!(g.floor(), 3.0);
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn floor(self) -> f32 {
         // On MSVC LLVM will lower many math intrinsics to a call to the
@@ -309,6 +316,7 @@ impl f32 {
     /// assert_eq!(f.ceil(), 4.0);
     /// assert_eq!(g.ceil(), 4.0);
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn ceil(self) -> f32 {
         // see notes above in `floor`
@@ -328,6 +336,7 @@ impl f32 {
     /// assert_eq!(f.round(), 3.0);
     /// assert_eq!(g.round(), -3.0);
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn round(self) -> f32 {
         unsafe { intrinsics::roundf32(self) }
@@ -342,6 +351,7 @@ impl f32 {
     /// assert_eq!(f.trunc(), 3.0);
     /// assert_eq!(g.trunc(), -3.0);
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn trunc(self) -> f32 {
         unsafe { intrinsics::truncf32(self) }
@@ -360,10 +370,9 @@ impl f32 {
     /// assert!(abs_difference_x <= f32::EPSILON);
     /// assert!(abs_difference_y <= f32::EPSILON);
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn fract(self) -> f32 {
-        self - self.trunc()
-    }
+    pub fn fract(self) -> f32 { self - self.trunc() }
 
     /// Computes the absolute value of `self`. Returns `NAN` if the
     /// number is `NAN`.
@@ -382,10 +391,9 @@ impl f32 {
     ///
     /// assert!(f32::NAN.abs().is_nan());
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn abs(self) -> f32 {
-        num::Float::abs(self)
-    }
+    pub fn abs(self) -> f32 { num::Float::abs(self) }
 
     /// Returns a number that represents the sign of `self`.
     ///
@@ -403,10 +411,9 @@ impl f32 {
     ///
     /// assert!(f32::NAN.signum().is_nan());
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn signum(self) -> f32 {
-        num::Float::signum(self)
-    }
+    pub fn signum(self) -> f32 { num::Float::signum(self) }
 
     /// Returns `true` if `self`'s sign bit is positive, including
     /// `+0.0` and `INFINITY`.
@@ -423,10 +430,9 @@ impl f32 {
     /// // Requires both tests to determine if is `NaN`
     /// assert!(!nan.is_sign_positive() && !nan.is_sign_negative());
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn is_sign_positive(self) -> bool {
-        num::Float::is_sign_positive(self)
-    }
+    pub fn is_sign_positive(self) -> bool { num::Float::is_sign_positive(self) }
 
     /// Returns `true` if `self`'s sign is negative, including `-0.0`
     /// and `NEG_INFINITY`.
@@ -443,10 +449,9 @@ impl f32 {
     /// // Requires both tests to determine if is `NaN`.
     /// assert!(!nan.is_sign_positive() && !nan.is_sign_negative());
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn is_sign_negative(self) -> bool {
-        num::Float::is_sign_negative(self)
-    }
+    pub fn is_sign_negative(self) -> bool { num::Float::is_sign_negative(self) }
 
     /// Fused multiply-add. Computes `(self * a) + b` with only one rounding
     /// error. This produces a more accurate result with better performance than
@@ -464,6 +469,7 @@ impl f32 {
     ///
     /// assert!(abs_difference <= f32::EPSILON);
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn mul_add(self, a: f32, b: f32) -> f32 {
         unsafe { intrinsics::fmaf32(self, a, b) }
@@ -479,10 +485,9 @@ impl f32 {
     ///
     /// assert!(abs_difference <= f32::EPSILON);
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn recip(self) -> f32 {
-        num::Float::recip(self)
-    }
+    pub fn recip(self) -> f32 { num::Float::recip(self) }
 
     /// Raises a number to an integer power.
     ///
@@ -496,10 +501,9 @@ impl f32 {
     ///
     /// assert!(abs_difference <= f32::EPSILON);
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn powi(self, n: i32) -> f32 {
-        num::Float::powi(self, n)
-    }
+    pub fn powi(self, n: i32) -> f32 { num::Float::powi(self, n) }
 
     /// Raises a number to a floating point power.
     ///
@@ -511,6 +515,7 @@ impl f32 {
     ///
     /// assert!(abs_difference <= f32::EPSILON);
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn powf(self, n: f32) -> f32 {
         // see notes above in `floor`
@@ -535,6 +540,7 @@ impl f32 {
     /// assert!(abs_difference <= f32::EPSILON);
     /// assert!(negative.sqrt().is_nan());
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn sqrt(self) -> f32 {
         if self < 0.0 {
@@ -558,6 +564,7 @@ impl f32 {
     ///
     /// assert!(abs_difference <= f32::EPSILON);
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn exp(self) -> f32 {
         // see notes above in `floor`
@@ -579,6 +586,7 @@ impl f32 {
     ///
     /// assert!(abs_difference <= f32::EPSILON);
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn exp2(self) -> f32 {
         unsafe { intrinsics::exp2f32(self) }
@@ -598,6 +606,7 @@ impl f32 {
     ///
     /// assert!(abs_difference <= f32::EPSILON);
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn ln(self) -> f32 {
         // see notes above in `floor`
@@ -624,10 +633,9 @@ impl f32 {
     /// assert!(abs_difference_10 <= f32::EPSILON);
     /// assert!(abs_difference_2 <= f32::EPSILON);
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn log(self, base: f32) -> f32 {
-        self.ln() / base.ln()
-    }
+    pub fn log(self, base: f32) -> f32 { self.ln() / base.ln() }
 
     /// Returns the base 2 logarithm of the number.
     ///
@@ -641,6 +649,7 @@ impl f32 {
     ///
     /// assert!(abs_difference <= f32::EPSILON);
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn log2(self) -> f32 {
         #[cfg(target_os = "android")]
@@ -661,6 +670,7 @@ impl f32 {
     ///
     /// assert!(abs_difference <= f32::EPSILON);
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn log10(self) -> f32 {
         // see notes above in `floor`
@@ -681,10 +691,9 @@ impl f32 {
     ///
     /// assert!(abs_difference <= f32::EPSILON);
     /// ```
+    #[stable(feature = "f32_deg_rad_conversions", since="1.7.0")]
     #[inline]
-    pub fn to_degrees(self) -> f32 {
-        num::Float::to_degrees(self)
-    }
+    pub fn to_degrees(self) -> f32 { num::Float::to_degrees(self) }
 
     /// Converts degrees to radians.
     ///
@@ -697,10 +706,9 @@ impl f32 {
     ///
     /// assert!(abs_difference <= f32::EPSILON);
     /// ```
+    #[stable(feature = "f32_deg_rad_conversions", since="1.7.0")]
     #[inline]
-    pub fn to_radians(self) -> f32 {
-        num::Float::to_radians(self)
-    }
+    pub fn to_radians(self) -> f32 { num::Float::to_radians(self) }
 
     /// Constructs a floating point number of `x*2^exp`.
     ///
@@ -713,6 +721,12 @@ impl f32 {
     ///
     /// assert!(abs_difference <= f32::EPSILON);
     /// ```
+    #[unstable(feature = "float_extras",
+               reason = "pending integer conventions",
+               issue = "27752")]
+    #[rustc_deprecated(since = "1.11.0",
+                       reason = "never really came to fruition and easily \
+                                 implementable outside the standard library")]
     #[inline]
     pub fn ldexp(x: f32, exp: isize) -> f32 {
         unsafe { cmath::ldexpf(x, exp as c_int) }
@@ -739,6 +753,12 @@ impl f32 {
     /// assert!(abs_difference_0 <= f32::EPSILON);
     /// assert!(abs_difference_1 <= f32::EPSILON);
     /// ```
+    #[unstable(feature = "float_extras",
+               reason = "pending integer conventions",
+               issue = "27752")]
+    #[rustc_deprecated(since = "1.11.0",
+                       reason = "never really came to fruition and easily \
+                                 implementable outside the standard library")]
     #[inline]
     pub fn frexp(self) -> (f32, isize) {
         unsafe {
@@ -762,6 +782,12 @@ impl f32 {
     ///
     /// assert!(abs_diff <= f32::EPSILON);
     /// ```
+    #[unstable(feature = "float_extras",
+               reason = "unsure about its place in the world",
+               issue = "27752")]
+    #[rustc_deprecated(since = "1.11.0",
+                       reason = "never really came to fruition and easily \
+                                 implementable outside the standard library")]
     #[inline]
     pub fn next_after(self, other: f32) -> f32 {
         unsafe { cmath::nextafterf(self, other) }
@@ -777,6 +803,7 @@ impl f32 {
     /// ```
     ///
     /// If one of the arguments is NaN, then the other argument is returned.
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn max(self, other: f32) -> f32 {
         unsafe { cmath::fmaxf(self, other) }
@@ -792,6 +819,7 @@ impl f32 {
     /// ```
     ///
     /// If one of the arguments is NaN, then the other argument is returned.
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn min(self, other: f32) -> f32 {
         unsafe { cmath::fminf(self, other) }
@@ -814,6 +842,15 @@ impl f32 {
     /// assert!(abs_difference_x <= f32::EPSILON);
     /// assert!(abs_difference_y <= f32::EPSILON);
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
+    #[rustc_deprecated(since = "1.10.0",
+                       reason = "you probably meant `(self - other).abs()`: \
+                                 this operation is `(self - other).max(0.0)` (also \
+                                 known as `fdimf` in C). If you truly need the positive \
+                                 difference, consider using that expression or the C function \
+                                 `fdimf`, depending on how you wish to handle NaN (please consider \
+                                 filing an issue describing your use-case too).")]
     pub fn abs_sub(self, other: f32) -> f32 {
         unsafe { cmath::fdimf(self, other) }
     }
@@ -830,6 +867,7 @@ impl f32 {
     ///
     /// assert!(abs_difference <= f32::EPSILON);
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn cbrt(self) -> f32 {
         unsafe { cmath::cbrtf(self) }
@@ -849,6 +887,7 @@ impl f32 {
     ///
     /// assert!(abs_difference <= f32::EPSILON);
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn hypot(self, other: f32) -> f32 {
         unsafe { cmath::hypotf(self, other) }
@@ -865,6 +904,7 @@ impl f32 {
     ///
     /// assert!(abs_difference <= f32::EPSILON);
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn sin(self) -> f32 {
         // see notes in `core::f32::Float::floor`
@@ -885,6 +925,7 @@ impl f32 {
     ///
     /// assert!(abs_difference <= f32::EPSILON);
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn cos(self) -> f32 {
         // see notes in `core::f32::Float::floor`
@@ -904,6 +945,7 @@ impl f32 {
     ///
     /// assert!(abs_difference <= f32::EPSILON);
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn tan(self) -> f32 {
         unsafe { cmath::tanf(self) }
@@ -923,6 +965,7 @@ impl f32 {
     ///
     /// assert!(abs_difference <= f32::EPSILON);
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn asin(self) -> f32 {
         unsafe { cmath::asinf(self) }
@@ -942,6 +985,7 @@ impl f32 {
     ///
     /// assert!(abs_difference <= f32::EPSILON);
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn acos(self) -> f32 {
         unsafe { cmath::acosf(self) }
@@ -960,6 +1004,7 @@ impl f32 {
     ///
     /// assert!(abs_difference <= f32::EPSILON);
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn atan(self) -> f32 {
         unsafe { cmath::atanf(self) }
@@ -991,6 +1036,7 @@ impl f32 {
     /// assert!(abs_difference_1 <= f32::EPSILON);
     /// assert!(abs_difference_2 <= f32::EPSILON);
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn atan2(self, other: f32) -> f32 {
         unsafe { cmath::atan2f(self, other) }
@@ -1011,6 +1057,7 @@ impl f32 {
     /// assert!(abs_difference_0 <= f32::EPSILON);
     /// assert!(abs_difference_1 <= f32::EPSILON);
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn sin_cos(self) -> (f32, f32) {
         (self.sin(), self.cos())
@@ -1029,6 +1076,7 @@ impl f32 {
     ///
     /// assert!(abs_difference <= f32::EPSILON);
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn exp_m1(self) -> f32 {
         unsafe { cmath::expm1f(self) }
@@ -1047,6 +1095,7 @@ impl f32 {
     ///
     /// assert!(abs_difference <= f32::EPSILON);
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn ln_1p(self) -> f32 {
         unsafe { cmath::log1pf(self) }
@@ -1067,6 +1116,7 @@ impl f32 {
     ///
     /// assert!(abs_difference <= f32::EPSILON);
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn sinh(self) -> f32 {
         unsafe { cmath::sinhf(self) }
@@ -1087,6 +1137,7 @@ impl f32 {
     /// // Same result
     /// assert!(abs_difference <= f32::EPSILON);
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn cosh(self) -> f32 {
         unsafe { cmath::coshf(self) }
@@ -1107,6 +1158,7 @@ impl f32 {
     ///
     /// assert!(abs_difference <= f32::EPSILON);
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn tanh(self) -> f32 {
         unsafe { cmath::tanhf(self) }
@@ -1124,6 +1176,7 @@ impl f32 {
     ///
     /// assert!(abs_difference <= f32::EPSILON);
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn asinh(self) -> f32 {
         if self == NEG_INFINITY {
@@ -1145,6 +1198,7 @@ impl f32 {
     ///
     /// assert!(abs_difference <= f32::EPSILON);
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn acosh(self) -> f32 {
         match self {
@@ -1165,6 +1219,7 @@ impl f32 {
     ///
     /// assert!(abs_difference <= 1e-5);
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn atanh(self) -> f32 {
         0.5 * ((2.0 * self) / (1.0 - self)).ln_1p()
@@ -1438,7 +1493,7 @@ mod tests {
         assert_eq!((-0f32).abs(), 0f32);
         assert_eq!((-1f32).abs(), 1f32);
         assert_eq!(NEG_INFINITY.abs(), INFINITY);
-        assert_eq!((1f32 / NEG_INFINITY).abs(), 0f32);
+        assert_eq!((1f32/NEG_INFINITY).abs(), 0f32);
         assert!(NAN.abs().is_nan());
     }
 
@@ -1450,7 +1505,7 @@ mod tests {
         assert_eq!((-0f32).signum(), -1f32);
         assert_eq!((-1f32).signum(), -1f32);
         assert_eq!(NEG_INFINITY.signum(), -1f32);
-        assert_eq!((1f32 / NEG_INFINITY).signum(), -1f32);
+        assert_eq!((1f32/NEG_INFINITY).signum(), -1f32);
         assert!(NAN.signum().is_nan());
     }
 
@@ -1462,7 +1517,7 @@ mod tests {
         assert!(!(-0f32).is_sign_positive());
         assert!(!(-1f32).is_sign_positive());
         assert!(!NEG_INFINITY.is_sign_positive());
-        assert!(!(1f32 / NEG_INFINITY).is_sign_positive());
+        assert!(!(1f32/NEG_INFINITY).is_sign_positive());
         assert!(!NAN.is_sign_positive());
     }
 
@@ -1474,7 +1529,7 @@ mod tests {
         assert!((-0f32).is_sign_negative());
         assert!((-1f32).is_sign_negative());
         assert!(NEG_INFINITY.is_sign_negative());
-        assert!((1f32 / NEG_INFINITY).is_sign_negative());
+        assert!((1f32/NEG_INFINITY).is_sign_negative());
         assert!(!NAN.is_sign_negative());
     }
 
@@ -1712,25 +1767,15 @@ mod tests {
         assert_eq!((-0f32).frexp(), (-0f32, 0));
     }
 
-    #[test]
-    #[cfg_attr(windows, ignore)]
-    // FIXME #8755
+    #[test] #[cfg_attr(windows, ignore)] // FIXME #8755
     #[allow(deprecated)]
     fn test_frexp_nowin() {
         let inf: f32 = f32::INFINITY;
         let neg_inf: f32 = f32::NEG_INFINITY;
         let nan: f32 = f32::NAN;
-        assert_eq!(match inf.frexp() {
-                       (x, _) => x,
-                   },
-                   inf);
-        assert_eq!(match neg_inf.frexp() {
-                       (x, _) => x,
-                   },
-                   neg_inf);
-        assert!(match nan.frexp() {
-            (x, _) => x.is_nan(),
-        })
+        assert_eq!(match inf.frexp() { (x, _) => x }, inf);
+        assert_eq!(match neg_inf.frexp() { (x, _) => x }, neg_inf);
+        assert!(match nan.frexp() { (x, _) => x.is_nan() })
     }
 
     #[test]

@@ -15,9 +15,8 @@ use ops;
 use cmp;
 use hash::{Hash, Hasher};
 
-use sys::wtf8::{Wtf8, Wtf8Buf};
-use sys::{AsInner, IntoInner, FromInner};
-pub use sys::wtf8::EncodeWide;
+use sys::os_str::{Buf, Slice};
+use sys_common::{AsInner, IntoInner, FromInner};
 
 /// A type that can represent owned, mutable platform-native strings, but is
 /// cheaply inter-convertible with Rust strings.
@@ -36,26 +35,26 @@ pub use sys::wtf8::EncodeWide;
 /// and platform-native string values, and in particular allowing a Rust string
 /// to be converted into an "OS" string with no cost.
 #[derive(Clone)]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct OsString {
-    inner: Wtf8Buf 
+    inner: Buf
 }
 
 /// Slices into OS strings (see `OsString`).
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct OsStr {
-    inner: Wtf8
+    inner: Slice
 }
 
 impl OsString {
     /// Constructs a new empty `OsString`.
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new() -> OsString {
-        OsString { inner: Wtf8Buf::from_string(String::new()) }
-    }
-
-    fn _from_bytes(vec: Vec<u8>) -> Option<OsString> {
-        String::from_utf8(vec).ok().map(OsString::from)
+        OsString { inner: Buf::from_string(String::new()) }
     }
 
     /// Converts to an `OsStr` slice.
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn as_os_str(&self) -> &OsStr {
         self
     }
@@ -63,13 +62,15 @@ impl OsString {
     /// Converts the `OsString` into a `String` if it contains valid Unicode data.
     ///
     /// On failure, ownership of the original `OsString` is returned.
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn into_string(self) -> Result<String, OsString> {
         self.inner.into_string().map_err(|buf| OsString { inner: buf} )
     }
 
     /// Extends the string with the given `&OsStr` slice.
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn push<T: AsRef<OsStr>>(&mut self, s: T) {
-        self.inner.push_wtf8(&s.as_ref().inner)
+        self.inner.push_slice(&s.as_ref().inner)
     }
 
     /// Creates a new `OsString` with the given capacity.
@@ -79,13 +80,15 @@ impl OsString {
     /// allocate.
     ///
     /// See main `OsString` documentation information about encoding.
+    #[stable(feature = "osstring_simple_functions", since = "1.9.0")]
     pub fn with_capacity(capacity: usize) -> OsString {
         OsString {
-            inner: Wtf8Buf::with_capacity(capacity)
+            inner: Buf::with_capacity(capacity)
         }
     }
 
     /// Truncates the `OsString` to zero length.
+    #[stable(feature = "osstring_simple_functions", since = "1.9.0")]
     pub fn clear(&mut self) {
         self.inner.clear()
     }
@@ -93,6 +96,7 @@ impl OsString {
     /// Returns the capacity this `OsString` can hold without reallocating.
     ///
     /// See `OsString` introduction for information about encoding.
+    #[stable(feature = "osstring_simple_functions", since = "1.9.0")]
     pub fn capacity(&self) -> usize {
         self.inner.capacity()
     }
@@ -101,6 +105,7 @@ impl OsString {
     /// in the given `OsString`.
     ///
     /// The collection may reserve more space to avoid frequent reallocations.
+    #[stable(feature = "osstring_simple_functions", since = "1.9.0")]
     pub fn reserve(&mut self, additional: usize) {
         self.inner.reserve(additional)
     }
@@ -112,34 +117,27 @@ impl OsString {
     /// Note that the allocator may give the collection more space than it
     /// requests. Therefore capacity can not be relied upon to be precisely
     /// minimal. Prefer reserve if future insertions are expected.
+    #[stable(feature = "osstring_simple_functions", since = "1.9.0")]
     pub fn reserve_exact(&mut self, additional: usize) {
         self.inner.reserve_exact(additional)
     }
-
-    /// Creates an `OsString` from a potentially ill-formed UTF-16 slice of
-    /// 16-bit code units.
-    ///
-    /// This is lossless: calling `.encode_wide()` on the resulting string
-    /// will always return the original code units.
-    ///
-    /// NOTE: This function was copied from the windows implementation of OsStringExt
-    pub fn from_wide(wide: &[u16]) -> OsString {
-        OsString { inner: Wtf8Buf::from_wide(wide) }
-    }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl From<String> for OsString {
     fn from(s: String) -> OsString {
-        OsString { inner: Wtf8Buf::from_string(s) }
+        OsString { inner: Buf::from_string(s) }
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T: ?Sized + AsRef<OsStr>> From<&'a T> for OsString {
     fn from(s: &'a T) -> OsString {
         s.as_ref().to_os_string()
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl ops::Index<ops::RangeFull> for OsString {
     type Output = OsStr;
 
@@ -149,6 +147,7 @@ impl ops::Index<ops::RangeFull> for OsString {
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl ops::Deref for OsString {
     type Target = OsStr;
 
@@ -158,39 +157,47 @@ impl ops::Deref for OsString {
     }
 }
 
+#[stable(feature = "osstring_default", since = "1.9.0")]
 impl Default for OsString {
+    /// Constructs an empty `OsString`.
     #[inline]
     fn default() -> OsString {
         OsString::new()
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl Debug for OsString {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         fmt::Debug::fmt(&**self, formatter)
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl PartialEq for OsString {
     fn eq(&self, other: &OsString) -> bool {
         &**self == &**other
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl PartialEq<str> for OsString {
     fn eq(&self, other: &str) -> bool {
         &**self == other
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl PartialEq<OsString> for str {
     fn eq(&self, other: &OsString) -> bool {
         &**other == self
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl Eq for OsString {}
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl PartialOrd for OsString {
     #[inline]
     fn partial_cmp(&self, other: &OsString) -> Option<cmp::Ordering> {
@@ -206,6 +213,7 @@ impl PartialOrd for OsString {
     fn ge(&self, other: &OsString) -> bool { &**self >= &**other }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl PartialOrd<str> for OsString {
     #[inline]
     fn partial_cmp(&self, other: &str) -> Option<cmp::Ordering> {
@@ -213,6 +221,7 @@ impl PartialOrd<str> for OsString {
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl Ord for OsString {
     #[inline]
     fn cmp(&self, other: &OsString) -> cmp::Ordering {
@@ -220,6 +229,7 @@ impl Ord for OsString {
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl Hash for OsString {
     #[inline]
     fn hash<H: Hasher>(&self, state: &mut H) {
@@ -229,38 +239,61 @@ impl Hash for OsString {
 
 impl OsStr {
     /// Coerces into an `OsStr` slice.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::ffi::OsStr;
+    ///
+    /// let os_str = OsStr::new("foo");
+    /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new<S: AsRef<OsStr> + ?Sized>(s: &S) -> &OsStr {
         s.as_ref()
     }
 
-    fn from_inner(inner: &Wtf8) -> &OsStr {
+    fn from_inner(inner: &Slice) -> &OsStr {
         unsafe { mem::transmute(inner) }
     }
 
     /// Yields a `&str` slice if the `OsStr` is valid Unicode.
     ///
     /// This conversion may entail doing a check for UTF-8 validity.
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn to_str(&self) -> Option<&str> {
-        self.inner.as_str()
+        self.inner.to_str()
     }
 
     /// Converts an `OsStr` to a `Cow<str>`.
     ///
     /// Any non-Unicode sequences are replaced with U+FFFD REPLACEMENT CHARACTER.
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn to_string_lossy(&self) -> Cow<str> {
         self.inner.to_string_lossy()
     }
 
     /// Copies the slice into an owned `OsString`.
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn to_os_string(&self) -> OsString {
-        let mut buf = Wtf8Buf::with_capacity(self.inner.len());
-        buf.push_wtf8(&self.inner);
-        OsString { inner: buf }
+        OsString { inner: self.inner.to_owned() }
     }
 
     /// Checks whether the `OsStr` is empty.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::ffi::OsStr;
+    ///
+    /// let os_str = OsStr::new("");
+    /// assert!(os_str.is_empty());
+    ///
+    /// let os_str = OsStr::new("foo");
+    /// assert!(!os_str.is_empty());
+    /// ```
+    #[stable(feature = "osstring_simple_functions", since = "1.9.0")]
     pub fn is_empty(&self) -> bool {
-        self.inner.is_empty()
+        self.inner.inner.is_empty()
     }
 
     /// Returns the length of this `OsStr`.
@@ -271,8 +304,21 @@ impl OsStr {
     /// other methods like `OsString::with_capacity` to avoid reallocations.
     ///
     /// See `OsStr` introduction for more information about encoding.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::ffi::OsStr;
+    ///
+    /// let os_str = OsStr::new("");
+    /// assert_eq!(os_str.len(), 0);
+    ///
+    /// let os_str = OsStr::new("foo");
+    /// assert_eq!(os_str.len(), 3);
+    /// ```
+    #[stable(feature = "osstring_simple_functions", since = "1.9.0")]
     pub fn len(&self) -> usize {
-        self.inner.len()
+        self.inner.inner.len()
     }
 
     /// Gets the underlying byte representation.
@@ -282,46 +328,42 @@ impl OsStr {
     fn bytes(&self) -> &[u8] {
         unsafe { mem::transmute(&self.inner) }
     }
-    
-    /// Re-encodes an `OsStr` as a wide character sequence,
-    /// i.e. potentially ill-formed UTF-16.
-    /// This is lossless. Note that the encoding does not include a final
-    /// null.
-    ///
-    /// NOTE: This function was copied from the windows implementation of OsStrExt
-    pub fn encode_wide(&self) -> EncodeWide {
-        self.inner.encode_wide()
-    }
-
 }
 
+#[stable(feature = "osstring_default", since = "1.9.0")]
 impl<'a> Default for &'a OsStr {
+    /// Creates an empty `OsStr`.
     #[inline]
     fn default() -> &'a OsStr {
         OsStr::new("")
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl PartialEq for OsStr {
     fn eq(&self, other: &OsStr) -> bool {
         self.bytes().eq(other.bytes())
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl PartialEq<str> for OsStr {
     fn eq(&self, other: &str) -> bool {
         *self == *OsStr::new(other)
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl PartialEq<OsStr> for str {
     fn eq(&self, other: &OsStr) -> bool {
         *other == *OsStr::new(self)
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl Eq for OsStr {}
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl PartialOrd for OsStr {
     #[inline]
     fn partial_cmp(&self, other: &OsStr) -> Option<cmp::Ordering> {
@@ -337,6 +379,7 @@ impl PartialOrd for OsStr {
     fn ge(&self, other: &OsStr) -> bool { self.bytes().ge(other.bytes()) }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl PartialOrd<str> for OsStr {
     #[inline]
     fn partial_cmp(&self, other: &str) -> Option<cmp::Ordering> {
@@ -347,6 +390,7 @@ impl PartialOrd<str> for OsStr {
 // FIXME (#19470): cannot provide PartialOrd<OsStr> for str until we
 // have more flexible coherence rules.
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl Ord for OsStr {
     #[inline]
     fn cmp(&self, other: &OsStr) -> cmp::Ordering { self.bytes().cmp(other.bytes()) }
@@ -354,16 +398,19 @@ impl Ord for OsStr {
 
 macro_rules! impl_cmp {
     ($lhs:ty, $rhs: ty) => {
+        #[stable(feature = "cmp_os_str", since = "1.8.0")]
         impl<'a, 'b> PartialEq<$rhs> for $lhs {
             #[inline]
             fn eq(&self, other: &$rhs) -> bool { <OsStr as PartialEq>::eq(self, other) }
         }
 
+        #[stable(feature = "cmp_os_str", since = "1.8.0")]
         impl<'a, 'b> PartialEq<$lhs> for $rhs {
             #[inline]
             fn eq(&self, other: &$lhs) -> bool { <OsStr as PartialEq>::eq(self, other) }
         }
 
+        #[stable(feature = "cmp_os_str", since = "1.8.0")]
         impl<'a, 'b> PartialOrd<$rhs> for $lhs {
             #[inline]
             fn partial_cmp(&self, other: &$rhs) -> Option<cmp::Ordering> {
@@ -371,6 +418,7 @@ macro_rules! impl_cmp {
             }
         }
 
+        #[stable(feature = "cmp_os_str", since = "1.8.0")]
         impl<'a, 'b> PartialOrd<$lhs> for $rhs {
             #[inline]
             fn partial_cmp(&self, other: &$lhs) -> Option<cmp::Ordering> {
@@ -386,6 +434,7 @@ impl_cmp!(Cow<'a, OsStr>, OsStr);
 impl_cmp!(Cow<'a, OsStr>, &'b OsStr);
 impl_cmp!(Cow<'a, OsStr>, OsString);
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl Hash for OsStr {
     #[inline]
     fn hash<H: Hasher>(&self, state: &mut H) {
@@ -393,59 +442,66 @@ impl Hash for OsStr {
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl Debug for OsStr {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         self.inner.fmt(formatter)
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl Borrow<OsStr> for OsString {
     fn borrow(&self) -> &OsStr { &self[..] }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl ToOwned for OsStr {
     type Owned = OsString;
     fn to_owned(&self) -> OsString { self.to_os_string() }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl AsRef<OsStr> for OsStr {
     fn as_ref(&self) -> &OsStr {
         self
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl AsRef<OsStr> for OsString {
     fn as_ref(&self) -> &OsStr {
         self
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl AsRef<OsStr> for str {
     fn as_ref(&self) -> &OsStr {
-        OsStr::from_inner(Wtf8::from_str(self))
+        OsStr::from_inner(Slice::from_str(self))
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl AsRef<OsStr> for String {
     fn as_ref(&self) -> &OsStr {
         (&**self).as_ref()
     }
 }
 
-impl FromInner<Wtf8Buf> for OsString {
-    fn from_inner(buf: Wtf8Buf) -> OsString {
+impl FromInner<Buf> for OsString {
+    fn from_inner(buf: Buf) -> OsString {
         OsString { inner: buf }
     }
 }
 
-impl IntoInner<Wtf8Buf> for OsString {
-    fn into_inner(self) -> Wtf8Buf {
+impl IntoInner<Buf> for OsString {
+    fn into_inner(self) -> Buf {
         self.inner
     }
 }
 
-impl AsInner<Wtf8> for OsStr {
-    fn as_inner(&self) -> &Wtf8 {
+impl AsInner<Slice> for OsStr {
+    fn as_inner(&self) -> &Slice {
         &self.inner
     }
 }
@@ -453,29 +509,29 @@ impl AsInner<Wtf8> for OsStr {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use sys::{AsInner, IntoInner};
+    use sys_common::{AsInner, IntoInner};
 
     #[test]
     fn test_os_string_with_capacity() {
         let os_string = OsString::with_capacity(0);
-        assert_eq!(0, os_string.inner.capacity());
+        assert_eq!(0, os_string.inner.into_inner().capacity());
 
         let os_string = OsString::with_capacity(10);
-        assert_eq!(10, os_string.inner.capacity());
+        assert_eq!(10, os_string.inner.into_inner().capacity());
 
         let mut os_string = OsString::with_capacity(0);
         os_string.push("abc");
-        assert!(os_string.inner.capacity() >= 3);
+        assert!(os_string.inner.into_inner().capacity() >= 3);
     }
 
     #[test]
     fn test_os_string_clear() {
         let mut os_string = OsString::from("abc");
-        assert_eq!(3, os_string.inner.len());
+        assert_eq!(3, os_string.inner.as_inner().len());
 
         os_string.clear();
         assert_eq!(&os_string, "");
-        assert_eq!(0, os_string.inner.len());
+        assert_eq!(0, os_string.inner.as_inner().len());
     }
 
     #[test]
