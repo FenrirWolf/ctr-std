@@ -10,10 +10,8 @@
 
 //! Buffering wrappers for I/O traits
 
-use prelude::v1::*;
 use io::prelude::*;
 
-use marker::Reflect;
 use cmp;
 use error;
 use fmt;
@@ -555,7 +553,7 @@ impl<W> From<IntoInnerError<W>> for Error {
     fn from(iie: IntoInnerError<W>) -> Error { iie.1 }
 }
 
-impl<W: Reflect + Send + fmt::Debug> error::Error for IntoInnerError<W> {
+impl<W: Send + fmt::Debug> error::Error for IntoInnerError<W> {
     fn description(&self) -> &str {
         error::Error::description(self.error())
     }
@@ -754,12 +752,14 @@ impl<W: Write> fmt::Debug for LineWriter<W> where W: fmt::Debug {
 
 #[cfg(test)]
 mod tests {
-    use prelude::v1::*;
     use io::prelude::*;
     use io::{self, BufReader, BufWriter, LineWriter, SeekFrom};
-    use sync::atomic::{AtomicUsize, Ordering};
-    use thread;
+    //use sync::atomic::{AtomicUsize, Ordering};
+    //use thread;
     use test;
+
+    use collections::{Vec, String};
+    use collections::string::ToString;
 
     /// A dummy reader intended at testing short-reads propagation.
     pub struct ShortReader {
@@ -1075,6 +1075,8 @@ mod tests {
         panic!();
     }
 
+    // NOTE: These tests are for threading stuff that is not yet implemented
+    /*
     #[test]
     fn panic_in_write_doesnt_flush_in_drop() {
         static WRITES: AtomicUsize = AtomicUsize::new(0);
@@ -1111,4 +1113,5 @@ mod tests {
             BufWriter::new(io::sink())
         });
     }
+    */
 }

@@ -13,9 +13,9 @@
 //! # The `Error` trait
 //!
 //! `Error` is a trait representing the basic expectations for error values,
-//! i.e. values of type `E` in `Result<T, E>`. At a minimum, errors must provide
+//! i.e. values of type `E` in [`Result<T, E>`]. At a minimum, errors must provide
 //! a description, but they may optionally provide additional detail (via
-//! `Display`) and cause chain information:
+//! [`Display`]) and cause chain information:
 //!
 //! ```
 //! use std::fmt::Display;
@@ -27,12 +27,16 @@
 //! }
 //! ```
 //!
-//! The `cause` method is generally used when errors cross "abstraction
+//! The [`cause`] method is generally used when errors cross "abstraction
 //! boundaries", i.e.  when a one module must report an error that is "caused"
 //! by an error from a lower-level module. This setup makes it possible for the
 //! high-level module to provide its own errors that do not commit to any
 //! particular implementation, but also reveal some of its implementation for
-//! debugging via `cause` chains.
+//! debugging via [`cause`] chains.
+//!
+//! [`Result<T, E>`]: ../result/enum.Result.html
+//! [`Display`]: ../fmt/trait.Display.html
+//! [`cause`]: trait.Error.html#method.cause
 
 // A note about crates and the facade:
 //
@@ -46,26 +50,94 @@
 // reconsider what crate these items belong in.
 
 use any::TypeId;
-use boxed::Box;
+use cell;
 use char;
 use fmt::{self, Debug, Display};
-use marker::{Send, Sync, Reflect};
 use mem::transmute;
 use num;
-use raw::TraitObject;
 use str;
-use string::{self, String};
+use string;
 
 /// Base functionality for all errors in Rust.
-pub trait Error: Debug + Display + Reflect {
+pub trait Error: Debug + Display {
     /// A short description of the error.
     ///
     /// The description should not contain newlines or sentence-ending
     /// punctuation, to facilitate embedding in larger user-facing
     /// strings.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::error::Error;
+    ///
+    /// match "xc".parse::<u32>() {
+    ///     Err(e) => {
+    ///         println!("Error: {}", e.description());
+    ///     }
+    ///     _ => println!("No error"),
+    /// }
+    /// ```
     fn description(&self) -> &str;
 
     /// The lower-level cause of this error, if any.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::error::Error;
+    /// use std::fmt;
+    ///
+    /// #[derive(Debug)]
+    /// struct SuperError {
+    ///     side: SuperErrorSideKick,
+    /// }
+    ///
+    /// impl fmt::Display for SuperError {
+    ///     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    ///         write!(f, "SuperError is here!")
+    ///     }
+    /// }
+    ///
+    /// impl Error for SuperError {
+    ///     fn description(&self) -> &str {
+    ///         "I'm the superhero of errors!"
+    ///     }
+    ///
+    ///     fn cause(&self) -> Option<&Error> {
+    ///         Some(&self.side)
+    ///     }
+    /// }
+    ///
+    /// #[derive(Debug)]
+    /// struct SuperErrorSideKick;
+    ///
+    /// impl fmt::Display for SuperErrorSideKick {
+    ///     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    ///         write!(f, "SuperErrorSideKick is here!")
+    ///     }
+    /// }
+    ///
+    /// impl Error for SuperErrorSideKick {
+    ///     fn description(&self) -> &str {
+    ///         "I'm SuperError side kick!"
+    ///     }
+    /// }
+    ///
+    /// fn get_super_error() -> Result<(), SuperError> {
+    ///     Err(SuperError { side: SuperErrorSideKick })
+    /// }
+    ///
+    /// fn main() {
+    ///     match get_super_error() {
+    ///         Err(e) => {
+    ///             println!("Error: {}", e.description());
+    ///             println!("Caused by: {}", e.cause().unwrap());
+    ///         }
+    ///         _ => println!("No error"),
+    ///     }
+    /// }
+    /// ```
     fn cause(&self) -> Option<&Error> { None }
 
     /// Get the `TypeId` of `self`
@@ -194,6 +266,24 @@ impl Error for fmt::Error {
     }
 }
 
+impl Error for cell::BorrowError {
+    fn description(&self) -> &str {
+        "already mutably borrowed"
+    }
+}
+
+impl Error for cell::BorrowMutError {
+    fn description(&self) -> &str {
+        "already borrowed"
+    }
+}
+
+impl Error for char::CharTryFromError {
+    fn description(&self) -> &str {
+        "converted integer out of range for `char`"
+    }
+}
+
 // copied from any.rs
 impl Error + 'static {
     /// Returns true if the boxed type is the same as `T`
@@ -215,11 +305,7 @@ impl Error + 'static {
     pub fn downcast_ref<T: Error + 'static>(&self) -> Option<&T> {
         if self.is::<T>() {
             unsafe {
-                // Get the raw representation of the trait object
-                let to: TraitObject = transmute(self);
-
-                // Extract the data pointer
-                Some(&*(to.data as *const T))
+                Some(&*(self as *const Error as *const T))
             }
         } else {
             None
@@ -232,11 +318,7 @@ impl Error + 'static {
     pub fn downcast_mut<T: Error + 'static>(&mut self) -> Option<&mut T> {
         if self.is::<T>() {
             unsafe {
-                // Get the raw representation of the trait object
-                let to: TraitObject = transmute(self);
-
-                // Extract the data pointer
-                Some(&mut *(to.data as *const T as *mut T))
+                Some(&mut *(self as *mut Error as *mut T))
             }
         } else {
             None
@@ -290,13 +372,8 @@ impl Error {
     pub fn downcast<T: Error + 'static>(self: Box<Self>) -> Result<Box<T>, Box<Error>> {
         if self.is::<T>() {
             unsafe {
-                // Get the raw representation of the trait object
-                let raw = Box::into_raw(self);
-                let to: TraitObject =
-                    transmute::<*mut Error, TraitObject>(raw);
-
-                // Extract the data pointer
-                Ok(Box::from_raw(to.data as *mut T))
+                let raw: *mut Error = Box::into_raw(self);
+                Ok(Box::from_raw(raw as *mut T))
             }
         } else {
             Err(self)
@@ -332,9 +409,9 @@ impl Error + Send + Sync {
 
 #[cfg(test)]
 mod tests {
-    use prelude::v1::*;
     use super::Error;
-    use fmt;
+    use core::fmt;
+    use alloc::boxed::Box;
 
     #[derive(Debug, PartialEq)]
     struct A;

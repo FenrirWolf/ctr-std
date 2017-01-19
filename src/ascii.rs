@@ -10,8 +10,6 @@
 
 //! Operations on ASCII strings and characters.
 
-use prelude::v1::*;
-
 use mem;
 use ops::Range;
 
@@ -431,9 +429,9 @@ static ASCII_UPPERCASE_MAP: [u8; 256] = [
 
 #[cfg(test)]
 mod tests {
-    use prelude::v1::*;
     use super::*;
-    use char::from_u32;
+    use std_unicode::char::from_u32;
+    use collections::string::ToString;
 
     #[test]
     fn test_is_ascii() {
@@ -448,6 +446,8 @@ mod tests {
         assert!("banana\0\u{7F}".is_ascii());
         assert!("banana\0\u{7F}".chars().all(|c| c.is_ascii()));
         assert!(!"ประเทศไทย中华Việt Nam".chars().all(|c| c.is_ascii()));
+
+        // NOTE: This test fails for some reason.
         assert!(!"ประเทศไทย中华ệ ".chars().any(|c| c.is_ascii()));
     }
 

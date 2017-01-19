@@ -5,9 +5,10 @@
   "ar": "arm-none-eabi-ar",
   "target-endian": "little",
   "target-pointer-width": "32",
+  "target-family": "unix",
   "arch": "arm",
-  "env": "newlib",
   "os": "linux",
+  "env": "newlib",
   "cpu": "mpcore",
   "features": "+vfp2",
   "relocation-model": "static",
@@ -22,11 +23,7 @@
     "-mtp=soft"
   ],
   "post-link-args": [
-    "-lc",
-    "-lm",
     "-lsysbase",
-    "-lc",
-    "-lgcc",
     "-lc"
   ]
 }

@@ -1,12 +1,16 @@
 [package]
-name = "ctr-std"
-version = "0.1.0"
-authors = ["Fenrir <fenrirwolf@gmail.com>"]
+name = "std"
+version = "0.0.0"
 license = "MIT/Apache 2.0"
 
-[lib]
-name = "std"
+[dependencies.alloc_system]
+version = "0.1.1"
 
-[dependencies]
-alloc_system3ds = { git = "https://github.com/rust3ds/alloc_system3ds" }
-ctr-libc = { git = "https://github.com/rust3ds/ctr-libc" }
+[dependencies.compiler_builtins]
+git = "https://github.com/rust-lang-nursery/compiler-builtins"
+
+[dependencies.ctru-sys]
+path = "../ctru-sys"
+
+[dependencies.spin]
+version = "0.4"

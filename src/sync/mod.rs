@@ -17,3 +17,7 @@
 
 pub use alloc::arc::{Arc, Weak};
 pub use core::sync::atomic;
+
+// Easy cheat until we get proper locks based on libctru code
+pub use spin::{Mutex, MutexGuard};
+pub use spin::{RwLock, RwLockReadGuard, RwLockWriteGuard};

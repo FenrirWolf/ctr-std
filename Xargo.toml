@@ -1,0 +1,6 @@
+[dependencies.collections]
+
+[dependencies.libc]
+path = "/home/fenrir/projects/ctr-libc"
+default-features = false
+stage = 1
