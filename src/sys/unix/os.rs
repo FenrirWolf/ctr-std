@@ -33,15 +33,14 @@ use vec;
 
 const TMPBUF_SZ: usize = 128;
 
-extern {
-    #[link(name = "__errno")]
-    fn errno_location() -> *mut c_int;
+extern "C" {
+    fn __errno() -> *mut c_int;
 }
 
 /// Returns the platform-specific value of errno
 pub fn errno() -> i32 {
     unsafe {
-        (*errno_location()) as i32
+        (*__errno()) as i32
     }
 }
 

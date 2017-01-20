@@ -23,8 +23,23 @@ use sys::time::SystemTime;
 use sys::{cvt, cvt_r};
 use sys_common::{AsInner, FromInner};
 
+/*
+#[cfg(any(target_os = "linux", target_os = "emscripten"))]
+use libc::{stat64, fstat64, lstat64, off64_t, ftruncate64, lseek64, dirent64, readdir64_r, open64};
+#[cfg(target_os = "android")]
+use libc::{stat as stat64, fstat as fstat64, lstat as lstat64, lseek64,
+           dirent as dirent64, open as open64};
+#[cfg(not(any(target_os = "linux",
+              target_os = "emscripten",
+              target_os = "android")))]
+*/
 use libc::{stat as stat64, fstat as fstat64, lstat as lstat64, off_t as off64_t,
            ftruncate as ftruncate64, lseek as lseek64, dirent as dirent64, open as open64};
+/*
+#[cfg(not(any(target_os = "linux",
+              target_os = "emscripten",
+              target_os = "solaris")))]
+*/
 use libc::{readdir_r as readdir64_r};
 
 pub struct File(FileDesc);
@@ -55,7 +70,7 @@ pub struct DirEntry {
     name: Box<[u8]>
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct OpenOptions {
     // generic
     read: bool,
@@ -75,6 +90,7 @@ pub struct FilePermissions { mode: mode_t }
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct FileType { mode: mode_t }
 
+#[derive(Debug)]
 pub struct DirBuilder { mode: mode_t }
 
 impl FileAttr {
@@ -88,6 +104,31 @@ impl FileAttr {
     }
 }
 
+#[cfg(target_os = "netbsd")]
+impl FileAttr {
+    pub fn modified(&self) -> io::Result<SystemTime> {
+        Ok(SystemTime::from(libc::timespec {
+            tv_sec: self.stat.st_mtime as libc::time_t,
+            tv_nsec: self.stat.st_mtimensec as libc::c_long,
+        }))
+    }
+
+    pub fn accessed(&self) -> io::Result<SystemTime> {
+        Ok(SystemTime::from(libc::timespec {
+            tv_sec: self.stat.st_atime as libc::time_t,
+            tv_nsec: self.stat.st_atimensec as libc::c_long,
+        }))
+    }
+
+    pub fn created(&self) -> io::Result<SystemTime> {
+        Ok(SystemTime::from(libc::timespec {
+            tv_sec: self.stat.st_birthtime as libc::time_t,
+            tv_nsec: self.stat.st_birthtimensec as libc::c_long,
+        }))
+    }
+}
+
+#[cfg(not(target_os = "netbsd"))]
 impl FileAttr {
     pub fn modified(&self) -> io::Result<SystemTime> {
         Ok(SystemTime::from(libc::timespec {
@@ -103,6 +144,23 @@ impl FileAttr {
         }))
     }
 
+    #[cfg(any(target_os = "bitrig",
+              target_os = "freebsd",
+              target_os = "openbsd",
+              target_os = "macos",
+              target_os = "ios"))]
+    pub fn created(&self) -> io::Result<SystemTime> {
+        Ok(SystemTime::from(libc::timespec {
+            tv_sec: self.stat.st_birthtime as libc::time_t,
+            tv_nsec: self.stat.st_birthtime_nsec as libc::c_long,
+        }))
+    }
+
+    #[cfg(not(any(target_os = "bitrig",
+                  target_os = "freebsd",
+                  target_os = "openbsd",
+                  target_os = "macos",
+                  target_os = "ios")))]
     pub fn created(&self) -> io::Result<SystemTime> {
         Err(io::Error::new(io::ErrorKind::Other,
                            "creation time is not available on this platform \
@@ -473,6 +531,11 @@ impl File {
     pub fn fd(&self) -> &FileDesc { &self.0 }
 
     pub fn into_fd(self) -> FileDesc { self.0 }
+
+    pub fn set_permissions(&self, perm: FilePermissions) -> io::Result<()> {
+        cvt_r(|| unsafe { libc::fchmod(self.0.raw(), perm.mode) })?;
+        Ok(())
+    }
 }
 
 impl DirBuilder {

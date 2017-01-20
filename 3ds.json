@@ -23,6 +23,8 @@
     "-mtp=soft"
   ],
   "post-link-args": [
+    "-lc",
+    "-lm",
     "-lsysbase",
     "-lc"
   ]
