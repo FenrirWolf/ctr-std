@@ -1,6 +1,6 @@
 [dependencies.collections]
 
 [dependencies.libc]
-path = "/home/fenrir/projects/ctr-libc"
+git = "https://github.com/FenrirWolf/ctr-libc.git"
 default-features = false
 stage = 1
