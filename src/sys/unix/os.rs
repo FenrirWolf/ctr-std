@@ -27,8 +27,6 @@ use path::{self, PathBuf};
 use ptr;
 use slice;
 use str;
-use sys::cvt;
-use sys::fd;
 use vec;
 
 const TMPBUF_SZ: usize = 128;
@@ -47,6 +45,8 @@ pub fn errno() -> i32 {
 /// Gets a detailed string description for the given error number.
 pub fn error_string(errno: i32) -> String {
     extern {
+    #[cfg_attr(any(target_os = "linux", target_env = "newlib"),
+                   link_name = "__xpg_strerror_r")]
         fn strerror_r(errnum: c_int, buf: *mut c_char,
                       buflen: libc::size_t) -> c_int;
     }
@@ -64,42 +64,6 @@ pub fn error_string(errno: i32) -> String {
     }
 }
 
-pub fn getcwd() -> io::Result<PathBuf> {
-    let mut buf = Vec::with_capacity(512);
-    loop {
-        unsafe {
-            let ptr = buf.as_mut_ptr() as *mut libc::c_char;
-            if !libc::getcwd(ptr, buf.capacity()).is_null() {
-                let len = CStr::from_ptr(buf.as_ptr() as *const libc::c_char).to_bytes().len();
-                buf.set_len(len);
-                buf.shrink_to_fit();
-                return Ok(PathBuf::from(OsString::from_vec(buf)));
-            } else {
-                let error = io::Error::last_os_error();
-                if error.raw_os_error() != Some(libc::ERANGE) {
-                    return Err(error);
-                }
-            }
-
-            // Trigger the internal buffer resizing logic of `Vec` by requiring
-            // more space than the current capacity.
-            let cap = buf.capacity();
-            buf.set_len(cap);
-            buf.reserve(1);
-        }
-    }
-}
-
-pub fn chdir(p: &path::Path) -> io::Result<()> {
-    let p: &OsStr = p.as_ref();
-    let p = CString::new(p.as_bytes())?;
-    unsafe {
-        match libc::chdir(p.as_ptr()) == (0 as c_int) {
-            true => Ok(()),
-            false => Err(io::Error::last_os_error()),
-        }
-    }
-}
 
 pub struct SplitPaths<'a> {
     iter: iter::Map<slice::Split<'a, u8, fn(&u8) -> bool>,
@@ -153,8 +117,6 @@ impl fmt::Display for JoinPathsError {
 impl StdError for JoinPathsError {
     fn description(&self) -> &str { "failed to join paths" }
 }
-
-
 
 pub fn exit(code: i32) -> ! {
     unsafe { libc::exit(code as c_int) }

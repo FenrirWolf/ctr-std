@@ -25,8 +25,6 @@
 #![allow(missing_docs)]
 
 pub mod io;
-pub mod memchr;
-pub mod wtf8;
 
 // common error constructors
 

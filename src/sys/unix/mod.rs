@@ -10,25 +10,14 @@
 
 #![allow(missing_docs, bad_style)]
 
-use io::{self, ErrorKind};
-use libc;
-
-#[cfg(target_os = "linux")]     pub use os::linux as platform;
-
 pub mod ext;
-pub mod fd;
-pub mod fs;
 pub mod memchr;
 pub mod os;
 pub mod os_str;
 pub mod path;
-pub mod time;
-pub mod stdio;
 
-#[cfg(target_os = "android")]
-pub use sys::android::signal;
-#[cfg(not(target_os = "android"))]
-pub use libc::signal;
+use io::ErrorKind;
+use libc;
 
 pub fn decode_error_kind(errno: i32) -> ErrorKind {
     match errno as libc::c_int {
@@ -56,48 +45,6 @@ pub fn decode_error_kind(errno: i32) -> ErrorKind {
     }
 }
 
-#[doc(hidden)]
-pub trait IsMinusOne {
-    fn is_minus_one(&self) -> bool;
-}
-
-macro_rules! impl_is_minus_one {
-    ($($t:ident)*) => ($(impl IsMinusOne for $t {
-        fn is_minus_one(&self) -> bool {
-            *self == -1
-        }
-    })*)
-}
-
-impl_is_minus_one! { i8 i16 i32 i64 isize }
-
-pub fn cvt<T: IsMinusOne>(t: T) -> io::Result<T> {
-    if t.is_minus_one() {
-        Err(io::Error::last_os_error())
-    } else {
-        Ok(t)
-    }
-}
-
-pub fn cvt_r<T, F>(mut f: F) -> io::Result<T>
-    where T: IsMinusOne,
-          F: FnMut() -> T
-{
-    loop {
-        match cvt(f()) {
-            Err(ref e) if e.kind() == ErrorKind::Interrupted => {}
-            other => return other,
-        }
-    }
-}
-
-// On Unix-like platforms, libc::abort will unregister signal handlers
-// including the SIGABRT handler, preventing the abort from being blocked, and
-// fclose streams, with the side effect of flushing them so libc bufferred
-// output will be printed.  Additionally the shell will generally print a more
-// understandable error message like "Abort trap" rather than "Illegal
-// instruction" that intrinsics::abort would cause, as intrinsics::abort is
-// implemented as an illegal instruction.
 pub unsafe fn abort_internal() -> ! {
     ::libc::abort()
 }

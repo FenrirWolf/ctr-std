@@ -18,10 +18,11 @@
 #![feature(slice_patterns)]
 #![feature(staged_api)]
 #![feature(str_internals)]
+#![feature(thread_local)]
 #![feature(try_from)]
 #![feature(unicode)]
 #![feature(zero_one)]
-#![allow(non_camel_case_types, dead_code)]
+#![allow(non_camel_case_types, dead_code, unused_features)]
 #![no_std]
 
 #![stable(feature = "rust1", since = "1.0.0")]
@@ -135,13 +136,11 @@ pub mod f64;
 pub mod ascii;
 pub mod error;
 pub mod ffi;
-pub mod fs;
 pub mod io;
 pub mod num;
 pub mod os;
 pub mod path;
 pub mod sync;
-pub mod time;
 
 // Platform-abstraction modules
 #[macro_use]

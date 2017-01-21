@@ -104,9 +104,9 @@ use borrow::{Borrow, Cow};
 use cmp;
 use error::Error;
 use fmt;
-use fs;
+//use fs;
 use hash::{Hash, Hasher};
-use io;
+//use io;
 use iter::{self, FusedIterator};
 use mem;
 use ops::{self, Deref};
@@ -1849,7 +1849,7 @@ impl Path {
     /// This is an alias to [`fs::metadata`].
     ///
     /// [`fs::metadata`]: ../fs/fn.metadata.html
-    #[stable(feature = "path_ext", since = "1.5.0")]
+    #[cfg(feature = "fs_not_implemented")]
     pub fn metadata(&self) -> io::Result<fs::Metadata> {
         fs::metadata(self)
     }
@@ -1859,7 +1859,7 @@ impl Path {
     /// This is an alias to [`fs::symlink_metadata`].
     ///
     /// [`fs::symlink_metadata`]: ../fs/fn.symlink_metadata.html
-    #[stable(feature = "path_ext", since = "1.5.0")]
+    #[cfg(feature = "fs_not_implemented")]
     pub fn symlink_metadata(&self) -> io::Result<fs::Metadata> {
         fs::symlink_metadata(self)
     }
@@ -1870,7 +1870,7 @@ impl Path {
     /// This is an alias to [`fs::canonicalize`].
     ///
     /// [`fs::canonicalize`]: ../fs/fn.canonicalize.html
-    #[stable(feature = "path_ext", since = "1.5.0")]
+    #[cfg(feature = "fs_not_implemented")]
     pub fn canonicalize(&self) -> io::Result<PathBuf> {
         fs::canonicalize(self)
     }
@@ -1880,7 +1880,7 @@ impl Path {
     /// This is an alias to [`fs::read_link`].
     ///
     /// [`fs::read_link`]: ../fs/fn.read_link.html
-    #[stable(feature = "path_ext", since = "1.5.0")]
+    #[cfg(feature = "fs_not_implemented")]
     pub fn read_link(&self) -> io::Result<PathBuf> {
         fs::read_link(self)
     }
@@ -1895,7 +1895,7 @@ impl Path {
     /// [`io::Result`]: ../io/type.Result.html
     /// [`DirEntry`]: ../fs/struct.DirEntry.html
     /// [`fs::read_dir`]: ../fs/fn.read_dir.html
-    #[stable(feature = "path_ext", since = "1.5.0")]
+     #[cfg(feature = "fs_not_implemented")]
     pub fn read_dir(&self) -> io::Result<fs::ReadDir> {
         fs::read_dir(self)
     }
@@ -1911,7 +1911,7 @@ impl Path {
     /// use std::path::Path;
     /// assert_eq!(Path::new("does_not_exist.txt").exists(), false);
     /// ```
-    #[stable(feature = "path_ext", since = "1.5.0")]
+    #[cfg(feature = "fs_not_implemented")]
     pub fn exists(&self) -> bool {
         fs::metadata(self).is_ok()
     }
@@ -1928,7 +1928,7 @@ impl Path {
     /// assert_eq!(Path::new("./is_a_directory/").is_file(), false);
     /// assert_eq!(Path::new("a_file.txt").is_file(), true);
     /// ```
-    #[stable(feature = "path_ext", since = "1.5.0")]
+    #[cfg(feature = "fs_not_implemented")]
     pub fn is_file(&self) -> bool {
         fs::metadata(self).map(|m| m.is_file()).unwrap_or(false)
     }
@@ -1945,7 +1945,7 @@ impl Path {
     /// assert_eq!(Path::new("./is_a_directory/").is_dir(), true);
     /// assert_eq!(Path::new("a_file.txt").is_dir(), false);
     /// ```
-    #[stable(feature = "path_ext", since = "1.5.0")]
+    #[cfg(feature = "fs_not_implemented")]
     pub fn is_dir(&self) -> bool {
         fs::metadata(self).map(|m| m.is_dir()).unwrap_or(false)
     }
